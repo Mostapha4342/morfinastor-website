@@ -1,0 +1,1951 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Morphina Store — Genuine Digital Licenses, Delivered Instantly</title>
+<meta name="description" content="Morphina Store — buy genuine Windows, Office, Antivirus, AI and Graphics licenses. Instant email delivery, 256-bit SSL, multi-currency checkout, and 24/7 support." />
+
+<!-- =============================================================================
+  MORPHINA STORE
+  -------------------------------------------------------------------------------
+  A fully working, self-contained e-commerce landing page.
+
+  HOW THIS FILE IS STRUCTURED (keep it modular):
+    1. <style>  — Custom design system (CSS variables + utility classes).
+                  This is the single source of truth for styling so the page is
+                  pixel-perfect even WITHOUT network access (e.g. in a sandbox
+                  preview). It is written to be Tailwind-compatible: the same
+                  class names are used, so you can port to real Tailwind utilities.
+    2. CDN <script> tags — Tailwind (utilities), Three.js (3D hero). These load
+                  only when there IS a network. The page degrades gracefully.
+    3. <script>  — Modular vanilla JS: state, theme, currency, catalog, filters,
+                  search, cart, 3D tilt, and the Three.js hero scene.
+
+  CURRENCY: all product prices are stored in USD *base*; the header currency
+  selector re-prices every element on the page via a live rate table.
+
+  To change products, edit the PRODUCTS array near the bottom of the <script>.
+============================================================================== -->
+
+<!-- Tailwind (utilities load when online; the custom system below works offline) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  /* =========================================================================
+     DESIGN TOKENS
+     ========================================================================= */
+  :root{
+    /* ---- DARK: deep electric blue on dark-navy/black ---- */
+    --bg:#04070f;
+    --bg-2:#070d1c;
+    --bg-3:#0a1228;
+    --surface:rgba(255,255,255,.045);
+    --surface-2:rgba(255,255,255,.09);
+    --border:rgba(120,160,255,.14);
+    --ink:#e8efff;
+    --muted:#93a3c6;
+    --primary:#2b6bff;         /* electric deep blue */
+    --secondary:#4f8cff;       /* light deep blue */
+    --tertiary:#38bdf8;        /* icy/sky highlight */
+    --ok:#22d3ee;
+    --star:#fbbf24;
+    --danger:#fb7185;
+    --card:#0a1328;
+    --shadow:0 22px 55px -22px rgba(0,0,0,.8);
+    --glow:0 0 36px rgba(43,107,255,.42);
+    --glow-soft:0 0 24px rgba(56,189,248,.22);
+    --grad:linear-gradient(120deg,#2b6bff 0%,#4f8cff 50%,#38bdf8 100%);
+    --radius:18px;
+    --radius-lg:26px;
+    --container:1240px;
+    --nav-h:68px;
+  }
+  html[data-theme="light"]{
+    /* ---- LIGHT: sky blue / icy highlights on pure white ---- */
+    --bg:#f3f8ff;
+    --bg-2:#ffffff;
+    --bg-3:#eef5ff;
+    --surface:#ffffff;
+    --surface-2:#eaf2fe;
+    --border:#dbe9fd;
+    --ink:#0b1a33;
+    --muted:#5b6c8a;
+    --card:#ffffff;
+    --shadow:0 20px 45px -24px rgba(20,64,130,.22);
+    --glow:0 0 26px rgba(10,132,255,.20);
+    --glow-soft:0 0 20px rgba(56,189,248,.18);
+    --primary:#0a84ff;         /* sky blue */
+    --secondary:#3b82f6;       /* sharper blue */
+    --tertiary:#38bdf8;        /* icy blue */
+    --ok:#0ea5e9;
+    --star:#f59e0b;
+    --danger:#e11d48;
+    --grad:linear-gradient(120deg,#0a84ff 0%,#3b82f6 50%,#38bdf8 100%);
+  }
+
+  /* =========================================================================
+     TAILWIND-COMPATIBLE UTILITY SUBSET (works offline)
+     ========================================================================= */
+  .relative{position:relative}
+  .absolute{position:absolute}
+  .fixed{position:fixed}
+  .flex{display:flex}
+  .grid{display:grid}
+  .hidden{display:none}
+  .flex-wrap{flex-wrap:wrap}
+  .items-center{align-items:center}
+  .items-start{align-items:flex-start}
+  .justify-between{justify-content:space-between}
+  .justify-center{justify-content:center}
+  .justify-start{justify-content:flex-start}
+  .w-full{width:100%}
+  .w-1\/2{width:50%}
+  .h-full{height:100%}
+  .text-center{text-align:center}
+  .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .uppercase{text-transform:uppercase}
+
+  /* =========================================================================
+     BASE
+     ========================================================================= */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;background:var(--bg)}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    /* base colour lives on the <html> layer; body is transparent so the fixed
+       3D canvas (z-index:-1) glows through every section as you scroll. */
+    background:transparent;color:var(--ink);
+    line-height:1.6;font-size:16px;overflow-x:hidden;
+    transition:color .4s ease;
+  }
+  img{max-width:100%;display:block}
+  a{color:inherit;text-decoration:none}
+  ul{list-style:none}
+  button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select{font:inherit;color:inherit}
+  .container{width:100%;max-width:var(--container);margin-inline:auto;padding-inline:clamp(1rem,4vw,2rem)}
+  .sc-title{font-weight:800;letter-spacing:-.02em;line-height:1.12}
+
+  /* =========================================================================
+     THEME TOGGLE (animate transition)
+     ========================================================================= */
+  .theme-switch{display:inline-flex;width:58px;height:30px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);position:relative;transition:.3s}
+  .theme-switch .knob{position:absolute;top:3px;left:4px;width:22px;height:22px;border-radius:50%;background:var(--grad);display:grid;place-items:center;font-size:12px;transition:.3s}
+  .theme-switch .knob .sun{display:none}
+  html[data-theme="light"] .theme-switch .knob{transform:translateX(28px)}
+  html[data-theme="light"] .theme-switch .knob .sun{display:inline}
+  html[data-theme="light"] .theme-switch .knob .moon{display:none}
+
+  /* =========================================================================
+     TOP BAR
+     ========================================================================= */
+  .topbar{background:var(--grad);color:#fff;font-size:.8rem;font-weight:600;position:relative;z-index:80}
+  .topbar .container{display:flex;align-items:center;justify-content:center;gap:.7rem;padding-block:.5rem;flex-wrap:wrap}
+  .topbar b{letter-spacing:.02em}
+  .topbar .dot{opacity:.7}
+
+  /* =========================================================================
+     NAV
+     ========================================================================= */
+  .nav{position:sticky;top:0;z-index:70;height:var(--nav-h);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(14px) saturate(150%);-webkit-backdrop-filter:blur(14px) saturate(150%);border-bottom:1px solid var(--border)}
+  .nav .container{height:100%;display:flex;align-items:center;gap:1rem}
+  .brand{display:flex;align-items:center;gap:.55rem;font-weight:800;letter-spacing:-.02em;font-size:1.18rem;white-space:nowrap}
+  .brand .logo{width:38px;height:38px;border-radius:12px;background:var(--grad);display:grid;place-items:center;color:#fff;flex:none;box-shadow:var(--glow)}
+  .brand .logo svg{width:20px;height:20px}
+  .brand small{display:block;font-size:.6rem;letter-spacing:.28em;color:var(--muted);font-weight:600;margin-top:-2px}
+
+  .nav-search{flex:1;max-width:380px;display:flex;align-items:center;gap:.5rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.5rem .85rem;transition:.2s}
+  .nav-search:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(34,211,238,.12)}
+  .nav-search svg{width:17px;height:17px;color:var(--muted);flex:none}
+  .nav-search input{flex:1;background:none;border:none;outline:none;font-size:.9rem}
+  .nav-search input::placeholder{color:var(--muted)}
+
+  .nav-links{display:flex;align-items:center;gap:1.25rem;font-weight:600;font-size:.92rem;color:var(--muted)}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-tools{display:flex;align-items:center;gap:.6rem;margin-left:auto}
+
+  /* dropdown (categories / currency) */
+  .dd{position:relative}
+  .dd-btn{display:flex;align-items:center;gap:.45rem;padding:.55rem .8rem;border-radius:11px;background:var(--surface);border:1px solid var(--border);font-weight:700;font-size:.85rem;transition:.2s}
+  .dd-btn:hover{border-color:var(--primary)}
+  .dd-btn svg{width:15px;height:15px;transition:.25s}
+  .dd.open .dd-btn svg{transform:rotate(180deg)}
+  .dd-menu{position:absolute;top:calc(100% + 8px);right:0;min-width:210px;background:var(--bg-3);border:1px solid var(--border);border-radius:14px;padding:.5rem;box-shadow:var(--shadow);opacity:0;visibility:hidden;transform:translateY(-6px);transition:.2s;z-index:60}
+  .dd.open .dd-menu{opacity:1;visibility:visible;transform:none}
+  .dd-menu button{display:flex;align-items:center;gap:.6rem;width:100%;padding:.6rem .7rem;border-radius:10px;font-weight:600;font-size:.88rem;text-align:left}
+  .dd-menu button:hover{background:var(--surface)}
+  .dd-menu button.active{color:var(--primary);font-weight:700}
+  .dd-menu button.cur .cur-code{margin-left:auto;color:var(--muted);font-size:.78rem}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;font-weight:700;font-size:.92rem;line-height:1;padding:.85rem 1.4rem;border-radius:12px;transition:.22s;border:1px solid transparent;white-space:nowrap}
+  .btn svg{width:18px;height:18px}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--grad);color:#fff;box-shadow:0 12px 30px -12px rgba(168,85,247,.6)}
+  .btn-primary:hover{filter:brightness(1.08);box-shadow:0 16px 40px -12px rgba(168,85,247,.7)}
+  .btn-ghost{background:var(--surface);border-color:var(--border);color:var(--ink)}
+  .btn-ghost:hover{border-color:var(--primary)}
+  .btn-sm{padding:.7rem 1.1rem;font-size:.85rem}
+
+  /* cart */
+  .cart-btn{position:relative;width:42px;height:42px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;transition:.2s}
+  .cart-btn:hover{border-color:var(--primary)}
+  .cart-btn svg{width:20px;height:20px}
+  .cart-btn .count{position:absolute;top:-6px;right:-6px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--tertiary);color:#fff;font-size:.68rem;font-weight:800;display:grid;place-items:center}
+
+  .icon-btn{width:42px;height:42px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;transition:.2s}
+  .icon-btn:hover{border-color:var(--primary)}
+
+  .burger{display:none}
+
+  /* =========================================================================
+     HERO
+     ========================================================================= */
+  .hero{position:relative;overflow:hidden;background:radial-gradient(1200px 720px at 82% -12%,rgba(43,107,255,.30),transparent 60%),radial-gradient(1000px 620px at -12% 112%,rgba(56,189,248,.22),transparent 55%);min-height:calc(100vh - var(--nav-h))}
+  html[data-theme="light"] .hero{background:radial-gradient(1200px 720px at 82% -12%,rgba(10,132,255,.14),transparent 60%),radial-gradient(1000px 620px at -12% 112%,rgba(56,189,248,.16),transparent 55%)}
+  .hero ::selection{background:var(--primary);color:#0a1f4d}
+  /* FULLSCREEN FIXED 3D BACKGROUND — global, behind all content, non-interactive.
+     The canvas is a direct <body> child at z-index:-1. Painting order:
+     html background → this canvas (z-index:-1) → in-flow section content.
+     Sections use transparent/translucent backgrounds so the ambient 3D scene
+     glows through the WHOLE site (header, grids, footer) while staying put as
+     you scroll. pointer-events:none keeps every card/button clickable. */
+  #hero3d{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;opacity:.6}
+  .hero .grid-bg{position:absolute;inset:0;z-index:0;background-image:linear-gradient(color-mix(in srgb,var(--primary) 22%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--primary) 22%,transparent) 1px,transparent 1px);background-size:46px 46px;opacity:.4;mask-image:radial-gradient(circle at 60% 40%,#000,transparent 80%);-webkit-mask-image:radial-gradient(circle at 60% 40%,#000,transparent 80%);animation:gridDrift 26s linear infinite}
+  @keyframes gridDrift{from{background-position:0 0}to{background-position:0 46px}}
+  .hero .container{position:relative;z-index:5;display:grid;grid-template-columns:1.05fr .95fr;gap:2.5rem;align-items:center;padding-block:clamp(2.5rem,6vw,5rem)}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-weight:700;font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;color:var(--primary);background:color-mix(in srgb,var(--primary) 14%,transparent);border:1px solid color-mix(in srgb,var(--primary) 35%,transparent);padding:.45rem .9rem;border-radius:999px;margin-bottom:1.1rem}
+  .hero h1.sc-title{font-size:clamp(2.2rem,5.4vw,3.9rem);margin-bottom:1.1rem}
+  .hero h1 .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.lead{font-size:clamp(1rem,2vw,1.16rem);color:var(--muted);max-width:34rem;margin-bottom:1.4rem}
+  .hero-points{display:grid;gap:.6rem;margin-bottom:1.6rem}
+  .hero-points li{display:flex;gap:.6rem;align-items:center;font-weight:500;color:var(--ink)}
+  .hero-points li svg{width:19px;height:19px;color:var(--ok);flex:none}
+  .hero-cta{display:flex;flex-wrap:wrap;gap:.8rem}
+  .hero-meta{display:flex;align-items:center;gap:1rem;margin-top:1.8rem;flex-wrap:wrap}
+  .hero-meta .avatars{display:flex}
+  .hero-meta .avatars span{width:36px;height:36px;border-radius:50%;border:2px solid var(--bg);display:grid;place-items:center;font-size:.7rem;font-weight:800;color:#fff;margin-left:-10px}
+  .hero-meta .avatars span:first-child{margin-left:0}
+  .hero-meta small{color:var(--muted)}
+  .hero-meta .stars{color:var(--star);letter-spacing:2px}
+
+  /* 3D visual: floating software "key cards" — kept subtle & ambient */
+  .stage{perspective:1400px;position:relative;height:400px;z-index:5}
+  .stage *{transform-style:preserve-3d}
+  .card3d{position:absolute;width:196px;height:118px;border-radius:15px;background:linear-gradient(150deg,rgba(255,255,255,.10),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(7px);box-shadow:0 24px 50px -24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.16);padding:13px;animation:float 8s ease-in-out infinite;transition:transform .3s ease;opacity:.8}
+  .card3d::after{content:"";position:absolute;inset:0;border-radius:15px;background:radial-gradient(110px at 20% 0%,rgba(255,255,255,.22),transparent 70%);pointer-events:none}
+  .card3d .chip{width:30px;height:23px;border-radius:6px;background:linear-gradient(135deg,#a8d8ff,#4f8cff);box-shadow:inset 0 0 6px rgba(255,255,255,.4)}
+  .card3d .num{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.76rem;letter-spacing:.1em;margin-top:.55rem;color:#d6e2ff}
+  .card3d .row{display:flex;justify-content:space-between;align-items:center;margin-top:auto;font-size:.58rem;color:#a9bce4;letter-spacing:.06em}
+  .card3d .brand-tag{display:inline-flex;align-items:center;gap:.3rem;font-weight:800;font-size:.68rem;color:#fff}
+  .card3d .brand-tag .dotp{width:8px;height:8px;border-radius:50%;background:var(--grad)}
+  .card3d.c1{background:linear-gradient(135deg,#1e77ff,#38bdf8);top:10%;left:8%;--tt:rotateY(15deg) rotateX(8deg);animation-delay:0s}
+  .card3d.c2{background:linear-gradient(135deg,#3a66ff,#1e7bff);top:44%;right:8%;--tt:rotateY(-14deg) rotateX(-7deg);animation-delay:1.4s}
+  .card3d.c3{background:linear-gradient(135deg,#0a84ff,#22d3ee);bottom:8%;left:26%;--tt:rotateY(10deg) rotateX(6deg);animation-delay:.7s}
+  .card3d.c4{background:linear-gradient(135deg,#4f8cff,#0ea5e9);top:30%;left:34%;--tt:rotateY(-10deg) rotateX(-5deg);animation-delay:2s;opacity:.55}
+  .card3d{transform:var(--tt) translate3d(var(--px,0),var(--py,0),0)}
+  @keyframes float{0%,100%{translate:0 0}50%{translate:0 -14px}}
+  .stage .orbit{position:absolute;left:50%;top:50%;width:340px;height:340px;transform:translate(-50%,-50%) rotateX(72deg);border:1px dashed color-mix(in srgb,var(--primary) 34%,transparent);border-radius:50%}
+  .stage .orbit::after{content:"";position:absolute;width:10px;height:10px;border-radius:50%;background:var(--primary);box-shadow:0 0 16px var(--primary);top:-5px;left:50%}
+  .stage .orbit2{position:absolute;left:50%;top:50%;width:260px;height:260px;transform:translate(-50%,-50%) rotateX(-70deg);border:1px dashed color-mix(in srgb,var(--tertiary) 30%,transparent);border-radius:50%}
+  .stage .glowball{position:absolute;left:50%;top:50%;width:220px;height:220px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(43,107,255,.28),transparent 70%);filter:blur(16px)}
+
+  /* =========================================================================
+     SECTIONS COMMON
+     ========================================================================= */
+  .section{padding-block:clamp(3.5rem,7vw,5.5rem)}
+  .sec-head{max-width:620px;margin:0 auto 2.8rem;text-align:center}
+  .sec-head .eyebrow{margin-bottom:.9rem}
+  .sec-head h2.sc-title{font-size:clamp(1.7rem,4vw,2.5rem);margin-bottom:.7rem}
+  .sec-head p{color:var(--muted);font-size:1.05rem}
+
+  /* =========================================================================
+     TRUST BADGES
+     ========================================================================= */
+  .trust{background:color-mix(in srgb,var(--bg-2) 78%,transparent);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .trust-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;padding-block:2rem}
+  .trust-item{display:flex;gap:.85rem;align-items:flex-start;padding:1rem}
+  .trust-item .ic{width:48px;height:48px;border-radius:13px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--primary);flex:none}
+  .trust-item .ic svg{width:23px;height:23px}
+  .trust-item h4{font-size:1rem;margin-bottom:.15rem}
+  .trust-item p{font-size:.83rem;color:var(--muted);line-height:1.45}
+
+  /* =========================================================================
+     CATALOG
+     ========================================================================= */
+  .filters{display:flex;gap:.55rem;flex-wrap:wrap;justify-content:center;margin-bottom:2.2rem}
+  .filt{display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1rem;border-radius:12px;background:var(--surface);border:1px solid var(--border);font-weight:600;font-size:.88rem;transition:.2s;color:var(--muted)}
+  .filt:hover{border-color:var(--primary);color:var(--ink)}
+  .filt.active{background:var(--grad);color:#fff;border-color:transparent;box-shadow:var(--glow)}
+
+  .grid-products{display:grid;grid-template-columns:repeat(4,1fr);gap:1.1rem}
+  .p-card{position:relative;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;transition:transform .25s,box-shadow .25s,border-color .25s;transform-style:preserve-3d;will-change:transform;overflow:hidden}
+  .p-card::before{content:"";position:absolute;inset:0;background:radial-gradient(130px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--primary) 26%,transparent),transparent 62%);opacity:0;transition:.3s;pointer-events:none;z-index:2}
+  .p-card::after{content:"";position:absolute;inset:0;border-radius:var(--radius);background:linear-gradient(115deg,transparent 40%,color-mix(in srgb,var(--tertiary) 14%,transparent) 50%,transparent 60%);background-size:250% 100%;background-position:100% 0;opacity:0;transition:.5s;pointer-events:none}
+  .p-card:hover{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(-8px);box-shadow:var(--shadow),var(--glow-soft);border-color:color-mix(in srgb,var(--primary) 50%,var(--border))}
+  .p-card:hover::before{opacity:1}
+  .p-card:hover::after{opacity:1;background-position:-100% 0}
+  .p-thumb{position:relative;aspect-ratio:16/11;border-radius:12px;overflow:hidden;display:grid;place-items:center;margin-bottom:1rem;transition:transform .4s}
+  .p-card:hover .p-thumb{transform:translateZ(24px) scale(1.03)}
+  .p-thumb .grad-bg{position:absolute;inset:0}
+  .p-thumb .icon{position:relative;font-size:2.8rem;filter:drop-shadow(0 8px 16px rgba(0,0,0,.35));transform:translateZ(18px);z-index:0}
+  .p-thumb .p-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;transition:transform .4s}
+  .p-card:hover .p-img{transform:scale(1.04)}
+  .p-thumb .cat-tag{position:absolute;top:8px;left:8px;z-index:3;font-size:.62rem;font-weight:700;letter-spacing:.05em;background:rgba(0,0,0,.45);color:#fff;padding:.25rem .55rem;border-radius:7px;backdrop-filter:blur(4px)}
+  .sale-tag{position:absolute;top:8px;right:8px;background:var(--tertiary);color:#fff;font-size:.68rem;font-weight:800;padding:.3rem .6rem;border-radius:999px;box-shadow:0 6px 16px -6px rgba(236,72,153,.7)}
+  .p-body{padding-top:.2rem;transform:translateZ(8px)}
+  .p-cat{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);margin-bottom:.3rem}
+  .p-name{font-weight:700;font-size:.98rem;line-height:1.3;min-height:2.6em}
+  .p-desc{font-size:.8rem;color:var(--muted);margin:.4rem 0 .7rem;min-height:2.5em}
+  .p-rating{display:flex;align-items:center;gap:.35rem;font-size:.8rem;color:var(--muted)}
+  .p-rating .stars{color:var(--star);letter-spacing:1px}
+  .p-price{display:flex;align-items:baseline;gap:.5rem;margin:.7rem 0 .9rem}
+  .p-price .cur-val{font-size:1.35rem;font-weight:800}
+  .p-price .cur-old{font-size:.86rem;color:var(--muted);text-decoration:line-through}
+  .p-price .cur-save{font-size:.72rem;font-weight:800;color:var(--ok);margin-left:auto}
+  .p-buy{display:flex;gap:.5rem;align-items:center}
+  .p-buy .btn{flex:1;padding:.72rem .6rem;font-size:.86rem}
+
+  /* =========================================================================
+     BEST SELLERS (horizontal)
+     ========================================================================= */
+  .h-scroll{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:1.1rem;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:.5rem}
+  .h-scroll .p-card{scroll-snap-align:start}
+  .h-scroll::-webkit-scrollbar{height:8px}
+  .h-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+  .h-scroll::-webkit-scrollbar-track{background:transparent}
+
+  /* =========================================================================
+     PAYMENT / STEPS
+     ========================================================================= */
+  .pay{background:color-mix(in srgb,var(--bg-2) 78%,transparent);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .pay-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+  .pay-item{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.6rem;padding:1.6rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);transition:.25s}
+  .pay-item:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--primary) 40%,var(--border));box-shadow:var(--shadow)}
+  .pay-item .logo{width:52px;height:52px;border-radius:14px;background:var(--bg-3);border:1px solid var(--border);display:grid;place-items:center;font-size:1.5rem}
+  .pay-item h4{font-size:.95rem}
+  .pay-item p{font-size:.78rem;color:var(--muted)}
+
+  /* =========================================================================
+     SOCIAL PROOF
+     ========================================================================= */
+  .rev-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem}
+  .rev-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;display:flex;flex-direction:column;gap:.9rem}
+  .rev-card .stars{color:var(--star);letter-spacing:2px}
+  .rev-card p{color:var(--ink);font-size:.92rem}
+  .rev-card img.imp{display:none}
+  .rev-card .who{display:flex;align-items:center;gap:.7rem;margin-top:auto}
+  .rev-card .who .avatar{width:40px;height:40px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:800;flex:none}
+  .rev-card .who .name{font-weight:700;font-size:.9rem}
+  .rev-card .who .role{font-size:.76rem;color:var(--muted)}
+  .rev-card .verified{display:inline-flex;align-items:center;gap:.3rem;color:var(--ok);font-size:.74rem;font-weight:700}
+  .rev-card .verified svg{width:14px;height:14px}
+
+  /* =========================================================================
+     FAQ
+     ========================================================================= */
+  .faq-wrap{max-width:780px;margin:0 auto;display:grid;gap:.8rem}
+  .faq-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .faq-q{width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;text-align:left;padding:1.15rem 1.3rem;font-weight:700;font-size:1rem}
+  .faq-q .plus{width:26px;height:26px;flex:none;border-radius:8px;background:var(--surface-2);color:var(--primary);display:grid;place-items:center;transition:.3s}
+  .faq-q .plus svg{width:15px;height:15px}
+  .faq-item.open .plus{background:var(--grad);color:#fff;transform:rotate(45deg)}
+  .faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease}
+  .faq-a p{padding:0 1.3rem 1.2rem;color:var(--muted);font-size:.92rem}
+  .faq-item.open .faq-a{max-height:300px}
+
+  /* =========================================================================
+     CTA + FOOTER
+     ========================================================================= */
+  .cta-band{background:var(--grad);color:#fff;text-align:center;padding-block:clamp(3rem,7vw,4.5rem)}
+  .cta-band h2.sc-title{color:#fff;font-size:clamp(1.7rem,4vw,2.6rem);margin-bottom:.7rem}
+  .cta-band p{max-width:560px;margin:0 auto 1.7rem;color:rgba(255,255,255,.92)}
+  .cta-band .btn{background:#fff;color:#5b21b6}
+  .cta-band .btn:hover{box-shadow:0 16px 40px -12px rgba(0,0,0,.4)}
+
+  .footer{background:color-mix(in srgb,var(--bg-2) 82%,transparent);border-top:1px solid var(--border);padding-top:3.5rem}
+  .foot-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1.2fr;gap:2.4rem;padding-bottom:2.4rem;border-bottom:1px solid var(--border)}
+  .foot-col h4{font-size:.95rem;margin-bottom:1rem}
+  .foot-col ul{display:grid;gap:.6rem;font-size:.88rem;color:var(--muted)}
+  .foot-col ul a:hover{color:var(--primary)}
+  .social{display:flex;gap:.55rem;margin-top:1rem}
+  .social a{width:38px;height:38px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;color:var(--muted);transition:.2s}
+  .social a:hover{background:var(--grad);color:#fff;border-color:transparent}
+  .social svg{width:17px;height:17px}
+  .news p{font-size:.88rem;color:var(--muted);margin-bottom:1rem}
+  .news form{display:flex;gap:.5rem}
+  .news input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.7rem .85rem;font-size:.88rem;outline:none}
+  .news input:focus{border-color:var(--primary)}
+  .news button{background:var(--grad);color:#fff;border-radius:10px;padding:0 1rem;font-weight:700}
+  .pay-badges{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem}
+  .pay-badge{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.4rem .65rem;font-size:.7rem;font-weight:800;letter-spacing:.02em;color:var(--muted)}
+  .foot-bottom{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding-block:1.4rem;font-size:.82rem;color:var(--muted)}
+  .foot-bottom a{margin-left:1.1rem}
+  .foot-bottom a:hover{color:var(--primary)}
+
+  /* =========================================================================
+     CART OVERLAY
+     ========================================================================= */
+  .overlay{position:fixed;inset:0;z-index:90;background:rgba(3,6,14,.6);backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:.3s}
+  .overlay.open{opacity:1;visibility:visible}
+  .cart-drawer{position:fixed;top:0;right:0;height:100%;width:min(420px,92vw);background:var(--bg-3);border-left:1px solid var(--border);z-index:95;display:flex;flex-direction:column;transform:translateX(100%);transition:.35s cubic-bezier(.2,.8,.2,1);box-shadow:-30px 0 60px -20px rgba(0,0,0,.5)}
+  .cart-drawer.open{transform:none}
+  .cart-head{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 1.4rem;border-bottom:1px solid var(--border)}
+  .cart-head h3{font-size:1.15rem}
+  .cart-head button{width:36px;height:36px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center}
+  .cart-items{flex:1;overflow:auto;padding:1.2rem 1.4rem;display:grid;gap:.9rem;align-content:start}
+  .cart-item{display:flex;gap:.9rem;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:.7rem}
+  .cart-item .thumb{width:56px;height:56px;border-radius:10px;display:grid;place-items:center;font-size:1.6rem;flex:none;overflow:hidden}
+  .cart-item .info{flex:1;min-width:0}
+  .cart-item .info .nm{font-weight:700;font-size:.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cart-item .info .pr{color:var(--primary);font-weight:700;font-size:.82rem}
+  .qty{display:flex;align-items:center;gap:.4rem}
+  .qty button{width:24px;height:24px;border-radius:7px;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;font-weight:800}
+  .qty span{min-width:18px;text-align:center;font-weight:700;font-size:.86rem}
+  .cart-item .rm{color:var(--danger);width:28px;height:28px;border-radius:8px;display:grid;place-items:center}
+  .cart-rm{font-size:1.1rem}
+  .empty{color:var(--muted);text-align:center;padding:3rem 1rem;display:grid;gap:.6rem;place-items:center}
+  .empty .big{font-size:2.6rem}
+  .cart-foot{padding:1.3rem 1.4rem;border-top:1px solid var(--border)}
+  .cart-total{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+  .cart-total .lbl{color:var(--muted)}
+  .cart-total .amt{font-size:1.5rem;font-weight:800}
+  .secure-note{display:flex;align-items:center;justify-content:center;gap:.35rem;color:var(--muted);font-size:.72rem;margin-top:.7rem}
+
+  /* =========================================================================
+     TOAST
+     ========================================================================= */
+  #toast{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg-3);border:1px solid var(--border);color:var(--ink);padding:.85rem 1.2rem;border-radius:12px;box-shadow:var(--shadow);opacity:0;visibility:hidden;transition:.3s;z-index:120;font-size:.9rem;font-weight:600;max-width:90vw;text-align:center;display:flex;align-items:center;gap:.5rem}
+  #toast.show{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+
+  /* reveal */
+  .reveal{opacity:0;transform:translateY(22px);transition:.7s cubic-bezier(.2,.8,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  /* toast variants (also raised above all modals) */
+  #toast{z-index:400}
+  #toast.t-success{border-color:color-mix(in srgb,var(--ok) 55%,transparent)}
+  #toast.t-error{border-color:color-mix(in srgb,var(--danger) 55%,transparent)}
+  #toast.t-info{border-color:color-mix(in srgb,var(--primary) 55%,transparent)}
+
+  /* =========================================================================
+     CHECKOUT MODAL (multi-step) + ORDER SUCCESS
+     ========================================================================= */
+  .modal-backdrop{position:fixed;inset:0;z-index:200;background:rgba(3,6,14,.68);backdrop-filter:blur(6px);opacity:0;visibility:hidden;transition:.3s;display:grid;place-items:center;overflow-y:auto;padding:1.2rem}
+  .modal-backdrop.open{opacity:1;visibility:visible}
+  .modal{width:min(560px,100%);background:var(--bg-3);border:1px solid var(--border);border-radius:22px;box-shadow:0 30px 80px -24px rgba(0,0,0,.55);transform:translateY(16px);transition:.35s cubic-bezier(.2,.8,.2,1);overflow:hidden}
+  .modal-backdrop.open .modal{transform:none}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid var(--border)}
+  .modal-head h3{font-size:1.15rem}
+  .modal-head button{width:36px;height:36px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center}
+  .modal-body{padding:1.5rem}
+  .modal-foot{display:flex;justify-content:space-between;gap:.8rem;padding:1.2rem 1.5rem;border-top:1px solid var(--border)}
+
+  /* step indicator */
+  .steps-dots{display:flex;align-items:center;gap:.4rem;padding:1.1rem 1.5rem;border-bottom:1px solid var(--border)}
+  .step-dot{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--muted);font-weight:600}
+  .step-dot .dot{width:26px;height:26px;border-radius:50%;background:var(--surface-2);border:1px solid var(--border);display:grid;place-items:center;font-size:.72rem;transition:.25s}
+  .step-dot.active,.step-dot.done{color:var(--ink)}
+  .step-dot.active .dot{background:var(--grad);color:#fff;border-color:transparent;box-shadow:var(--glow)}
+  .step-dot.done .dot{background:var(--ok);color:#fff;border-color:transparent}
+  .steps-dots .dash{flex:1;height:2px;background:var(--border);border-radius:2px}
+  .steps-dots .dash.done{background:var(--ok)}
+
+  /* checkout form */
+  .co-step{display:none}
+  .co-step.active{display:block;animation:fadein .3s ease}
+  @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .field{margin-bottom:1rem}
+  .field label{display:block;font-weight:700;font-size:.82rem;color:var(--ink);margin-bottom:.4rem}
+  .field input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:.78rem .9rem;font-size:.92rem;outline:none;transition:.2s;color:var(--ink)}
+  .field input:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent)}
+  .field input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px color-mix(in srgb,var(--danger) 16%,transparent)}
+  .field .err{display:none;color:var(--danger);font-size:.72rem;font-weight:600;margin-top:.3rem}
+  .field.has-err .err{display:block}
+  .field-hint{font-size:.72rem;color:var(--muted);margin-top:.3rem}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+
+  /* payment method cards */
+  .pm-list{display:grid;gap:.7rem}
+  .pm-opt{display:flex;align-items:center;gap:.8rem;padding:.9rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:13px;cursor:pointer;transition:.2s;font-weight:600}
+  .pm-opt:hover{border-color:var(--primary)}
+  .pm-opt.selected{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,transparent);box-shadow:var(--glow-soft)}
+  .pm-opt .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:grid;place-items:center;flex:none;transition:.2s}
+  .pm-opt.selected .radio{border-color:var(--primary)}
+  .pm-opt.selected .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--primary)}
+  .pm-opt .logo{width:38px;height:38px;border-radius:10px;background:var(--bg-2);border:1px solid var(--border);display:grid;place-items:center;font-size:1.2rem}
+  .pm-opt small{display:block;color:var(--muted);font-weight:600;margin-top:2px}
+  .pm-frame{margin-top:1rem;background:var(--surface);border:1px dashed var(--border);border-radius:13px;padding:1.4rem;text-align:center;color:var(--muted);font-size:.85rem;display:grid;gap:.3rem;place-items:center}
+  /* Stripe Card Element iframe mount */
+  .stripe-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.85rem .9rem;transition:.2s}
+  .stripe-card:focus-within,.stripe-card.focused{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 18%,transparent)}
+  .stripe-card .__PrivateStripeElement{border:none}
+
+  /* totals + review */
+  .co-summary{display:grid;gap:.5rem;font-size:.9rem}
+  .co-row{display:flex;justify-content:space-between;align-items:center}
+  .co-row .lbl{color:var(--muted)}
+  .co-row.total{font-weight:800;font-size:1.05rem;padding-top:.5rem;border-top:1px solid var(--border)}
+  .review-item{display:flex;align-items:center;gap:.7rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
+  .review-item:last-child{border-bottom:none}
+  .review-item .thumb{width:42px;height:42px;border-radius:9px;display:grid;place-items:center;font-size:1.3rem;flex:none;overflow:hidden}
+  .review-item .nm{font-weight:700;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .review-item .sub{font-size:.76rem;color:var(--muted)}
+  .review-item .pr{margin-left:auto;font-weight:800;font-size:.9rem}
+
+  /* spinner + loading button */
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex:none}
+  .spinner.dark{border-color:rgba(0,0,0,.2);border-top-color:var(--ink)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .btn[data-loading]{pointer-events:none;opacity:.85}
+  .btn[data-loading] .btn-label{opacity:.7}
+
+  /* success modal */
+  .success-modal{text-align:center;padding:2rem 1.6rem}
+  .success-modal .check-ring{width:74px;height:74px;border-radius:50%;background:var(--grad);display:grid;place-items:center;margin:0 auto 1.2rem;color:#fff;box-shadow:var(--glow);animation:pop .5s ease}
+  .success-modal .check-ring svg{width:38px;height:38px}
+  @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+  .success-modal h3{font-size:1.4rem;margin-bottom:.4rem}
+  .success-modal>p{color:var(--muted);font-size:.92rem;max-width:400px;margin:0 auto 1.2rem}
+  .key-box{display:flex;align-items:center;gap:.7rem;background:var(--bg-2);border:1px solid var(--border);border-radius:13px;padding:.85rem .9rem;margin:1rem auto .6rem;text-align:left;max-width:420px}
+  .key-box code{flex:1;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9rem;letter-spacing:.04em;color:var(--primary);word-break:break-all;min-width:0}
+  .key-box .copy{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:.5rem .8rem;font-size:.8rem;font-weight:700;white-space:nowrap}
+  .key-box .copy:hover{border-color:var(--primary);color:var(--primary)}
+  .email-tag{display:inline-flex;align-items:center;gap:.4rem;color:var(--ok);font-size:.82rem;font-weight:700;margin-bottom:1.4rem}
+  .email-tag svg{width:16px;height:16px}
+  .success-modal .note{font-size:.78rem;color:var(--muted);margin-top:1rem}
+
+  /* cart totals breakdown */
+  .cart-totals{display:grid;gap:.35rem;padding:0 .2rem 1rem;font-size:.86rem;color:var(--muted)}
+  .cart-totals .tr{display:flex;justify-content:space-between}
+  .cart-totals .tr.grand{color:var(--ink);font-weight:800;font-size:1rem}
+  .clear-cart{background:none;color:var(--danger);font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:.3rem;cursor:pointer}
+  .clear-cart:hover{text-decoration:underline}
+
+  /* =========================================================================
+     RESPONSIVE
+     ========================================================================= */
+  @media(max-width:1080px){
+    .nav-links{display:none}
+    .grid-products{grid-template-columns:repeat(3,1fr)}
+    .trust-grid{grid-template-columns:repeat(2,1fr)}
+    .hero .container{grid-template-columns:1fr}
+    .stage{height:360px;max-width:440px;margin:0 auto;width:100%}
+    .foot-grid{grid-template-columns:1fr 1fr}
+  }
+  @media(min-width:600px){ .sm-inline{display:inline} }
+  @media(max-width:820px){
+    .nav-search{display:none}
+    .pay-grid{grid-template-columns:repeat(2,1fr)}
+    .rev-grid{grid-template-columns:1fr}
+    .grid-products{grid-template-columns:repeat(2,1fr)}
+    .burger{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--surface);border:1px solid var(--border)}
+  }
+  @media(max-width:640px){
+    .trust-grid,.pay-grid{grid-template-columns:1fr}
+    .grid-products{grid-template-columns:1fr}
+    .foot-grid{grid-template-columns:1fr}
+    .hero-meta{flex-direction:column;align-items:flex-start}
+    .dd-menu{position:fixed;top:var(--nav-h);left:0;right:0;min-width:0}
+    .mobile-menu{position:fixed;inset:0;background:rgba(3,6,14,.5);z-index:96;opacity:0;visibility:hidden;transition:.3s}
+    .mobile-menu.open{opacity:1;visibility:visible}
+    .mobile-menu .panel{position:absolute;left:0;top:0;bottom:0;width:min(300px,82%);background:var(--bg-3);padding:5rem 1.4rem 2rem;transform:translateX(-100%);transition:.35s}
+    .mobile-menu.open .panel{transform:none}
+    .mobile-menu nav{display:grid;gap:1.1rem}
+    .mobile-menu nav a{font-weight:700;font-size:1.15rem}
+    .mobile-menu .nav-search{display:flex}
+    .form-row{grid-template-columns:1fr}
+    .modal{max-height:92vh;overflow:auto}
+    .steps-dots .step-dot .lbl{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ FULLSCREEN 3D BACKGROUND (fixed, global) ============
+     This canvas is a direct child of <body>, NOT inside any hero/section div.
+     It covers the entire viewport, sits at z-index:-1 (behind ALL page content
+     — header, grids, footer), and uses pointer-events:none so every UI element,
+     card and button stays fully clickable/scrollable over it. Scrolling leaves
+     it fixed in the background across the whole site.
+     The WebGL scene renders the theme-aware ambient mesh/particles behind it. -->
+<canvas id="hero3d" aria-hidden="true"></canvas>
+
+<!-- ============ TOP BAR ============ -->
+<div class="topbar">
+  <div class="container">
+    <span>⚡ Flash sale</span><span class="dot">•</span>
+    <b>Up to 97% OFF</b><span class="dot">•</span>
+    <span>Multi-currency checkout · Instant delivery</span><span class="dot">•</span>
+    <span class="hidden sm-inline">Ends in <b id="countdown">00:00:00</b></span>
+  </div>
+</div>
+
+<!-- ============ NAV ============ -->
+<header class="nav">
+  <div class="container">
+    <a href="#" class="brand" aria-label="Morphina Store">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span>
+      <span>Morphina<small>STORE</small></span>
+    </a>
+
+    <form class="nav-search" onsubmit="return false;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" type="search" placeholder="Search licenses…" autocomplete="off" />
+    </form>
+
+    <nav class="nav-links">
+      <a href="#catalog">Catalog</a>
+      <a href="#best">Best Sellers</a>
+      <a href="#payments">Payments</a>
+      <a href="#reviews">Reviews</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <div class="nav-tools">
+      <!-- Category dropdown -->
+      <div class="dd" id="catDD">
+        <button class="dd-btn" id="catBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          Categories
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="dd-menu" id="catMenu">
+          <button data-cat="all">🌟 All Products</button>
+          <button data-cat="os">🖥️ Operating Systems</button>
+          <button data-cat="office">📊 Office Suites</button>
+          <button data-cat="antivirus">🛡️ Antivirus</button>
+          <button data-cat="ai">🤖 AI Licenses</button>
+          <button data-cat="graphics">🎨 Graphics</button>
+        </div>
+      </div>
+
+      <!-- Currency dropdown -->
+      <div class="dd" id="curDD">
+        <button class="dd-btn" id="curBtn">
+          <span id="curSymbol">$</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="dd-menu" id="curMenu">
+          <button data-cur="USD" class="cur">🇺🇸 USD <span class="cur-code">$</span></button>
+          <button data-cur="EUR" class="cur">🇪🇺 EUR <span class="cur-code">€</span></button>
+          <button data-cur="GBP" class="cur">🇬🇧 GBP <span class="cur-code">£</span></button>
+          <button data-cur="MAD" class="cur">🇲🇦 MAD <span class="cur-code">MAD</span></button>
+        </div>
+      </div>
+
+      <!-- Theme switch -->
+      <button class="theme-switch" id="themeSwitch" aria-label="Toggle theme">
+        <span class="knob"><span class="moon">🌙</span><span class="sun">☀️</span></span>
+      </button>
+
+      <!-- Cart -->
+      <button class="cart-btn" id="cartBtn" aria-label="Cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1.4"/><circle cx="19" cy="21" r="1.4"/><path d="M3 3h2l2.5 13h11l2-9H7"/></svg>
+        <span class="count" id="cartCount">0</span>
+      </button>
+
+      <!-- Mobile burger -->
+      <button class="burger" id="burger" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Mobile menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <div class="panel">
+    <button style="position:absolute;top:1.1rem;left:1.1rem;width:36px;height:36px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <nav>
+      <a href="#catalog" data-close>Catalog</a>
+      <a href="#best" data-close>Best Sellers</a>
+      <a href="#payments" data-close>Payments</a>
+      <a href="#reviews" data-close>Reviews</a>
+      <a href="#faq" data-close>FAQ</a>
+    </nav>
+    <form class="nav-search" style="margin-top:1.6rem;max-width:none" onsubmit="return false;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchMobile" type="search" placeholder="Search licenses…" />
+    </form>
+  </div>
+</div>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="grid-bg"></div>
+  <div class="container">
+    <div>
+      <span class="eyebrow">◆ Official digital license store</span>
+      <h1 class="sc-title">Genuine licenses.<br/><span class="grad-text">Instant delivery.</span><br/>Zero risk.</h1>
+      <p class="lead">Unlock Windows, Office, Antivirus, AI and Graphics software with 100% authentic keys — delivered to your inbox in seconds, priced in the currency you trust.</p>
+      <ul class="hero-points">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 6"/></svg> Instant email delivery of your license key</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 6"/></svg> 256-bit SSL encrypted, secure checkout</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 6"/></svg> 100% genuine guarantee + 24/7 human support</li>
+      </ul>
+      <div class="hero-cta">
+        <a href="#catalog" class="btn btn-primary btn-lg" style="padding:1.05rem 1.8rem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>
+          Browse licenses
+        </a>
+        <a href="#best" class="btn btn-ghost btn-lg" style="padding:1.05rem 1.8rem">Best sellers</a>
+      </div>
+      <div class="hero-meta">
+        <div class="avatars">
+          <span style="background:#f472b6">LV</span>
+          <span style="background:#60a5fa">HN</span>
+          <span style="background:#34d399">ZK</span>
+          <span style="background:#fbbf24">TB</span>
+        </div>
+        <div>
+          <span class="stars">★★★★★</span>
+          <small><b>4.9/5</b> from 2,300+ verified buyers</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D visual -->
+    <div class="stage">
+      <div class="glowball"></div>
+      <div class="orbit"></div>
+      <div class="orbit2"></div>
+      <div class="card3d c1"><div class="chip"></div><div class="num">4912 •••• •••• 8841</div><div class="row"><span>LICENSE KEY</span><span class="brand-tag"><span class="dotp"></span>MORPHINA</span></div></div>
+      <div class="card3d c2"><div class="chip"></div><div class="num">WIN-11 •• PRO •••</div><div class="row"><span>ACTIVATED</span><span class="brand-tag"><span class="dotp"></span>MORPHINA</span></div></div>
+      <div class="card3d c3"><div class="chip"></div><div class="num">XXXXX-XXXXX-XXXXX</div><div class="row"><span>INSTANT DELIVERY</span><span class="brand-tag"><span class="dotp"></span>MORPHINA</span></div></div>
+      <div class="card3d c4"><div class="chip"></div><div class="num">SECURE · SSL</div><div class="row"><span>24/7 SUPPORT</span><span class="brand-tag"><span class="dotp"></span>MORPHINA</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRUST BADGES ============ -->
+<section class="trust">
+  <div class="container">
+    <div class="trust-grid">
+      <div class="trust-item reveal">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg></span>
+        <div><h4>Instant email delivery</h4><p>Key sent to your inbox within seconds of purchase.</p></div>
+      </div>
+      <div class="trust-item reveal">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+        <div><h4>256-bit SSL encryption</h4><p>Your payment and data are always fully protected.</p></div>
+      </div>
+      <div class="trust-item reveal">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <div><h4>100% genuine guarantee</h4><p>Official, license-approved, original product keys.</p></div>
+      </div>
+      <div class="trust-item reveal">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+        <div><h4>24/7 human support</h4><p>Real experts, pre- and post-sale, whenever you need.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CATALOG ============ -->
+<section class="section" id="catalog">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Live catalog</span>
+      <h2 class="sc-title">Shop the full license store</h2>
+      <p>Every product ships instantly, is 100% genuine, and is re-priced live across all currencies as you switch.</p>
+    </div>
+    <div class="filters reveal" id="filters">
+      <button class="filt active" data-cat="all">🌟 All</button>
+      <button class="filt" data-cat="os">🖥️ Operating Systems</button>
+      <button class="filt" data-cat="office">📊 Office</button>
+      <button class="filt" data-cat="antivirus">🛡️ Antivirus</button>
+      <button class="filt" data-cat="ai">🤖 AI Tools</button>
+      <button class="filt" data-cat="graphics">🎨 Graphics</button>
+    </div>
+    <div class="grid-products" id="productGrid"></div>
+    <p class="text-center" id="noResults" style="color:var(--muted);padding:2rem;display:none">No products match your search.</p>
+  </div>
+</section>
+
+<!-- ============ BEST SELLERS ============ -->
+<section class="section" id="best" style="background:color-mix(in srgb,var(--bg-2) 78%,transparent);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">🔥 Most popular</span>
+      <h2 class="sc-title">Best-selling licenses</h2>
+      <p>Trusted by thousands of customers worldwide.</p>
+    </div>
+    <div class="h-scroll" id="bestGrid"></div>
+  </div>
+</section>
+
+<!-- ============ PAYMENT GATEWAY ============ -->
+<section class="section pay" id="payments">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Global payments</span>
+      <h2 class="sc-title">Pay your way, in any currency</h2>
+      <p>Industry-standard payment gateways — every single one secured with 256-bit SSL.</p>
+    </div>
+    <div class="pay-grid">
+      <div class="pay-item reveal"><span class="logo">💳</span><h4>Credit / Debit Card</h4><p>Visa, Mastercard, Amex — processed by Stripe.</p></div>
+      <div class="pay-item reveal"><span class="logo">🅿️</span><h4>PayPal</h4><p>Fast, buyer-protected checkout for supported regions.</p></div>
+      <div class="pay-item reveal"><span class="logo">₿</span><h4>Crypto</h4><p>BTC &amp; ETH accepted with instant confirmation.</p></div>
+      <div class="pay-item reveal"><span class="logo">🔒</span><h4>Secure by Stripe</h4><p>PCI-DSS compliant, tokenized, never stored.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REVIEWS ============ -->
+<section class="section" id="reviews">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Social proof</span>
+      <h2 class="sc-title">Loved by 2,300+ customers</h2>
+      <p>A 4.9/5 rating built on genuine, instant, worry-free activation.</p>
+    </div>
+    <div class="rev-grid">
+      <div class="rev-card reveal">
+        <div class="stars">★★★★★</div>
+        <p>"Ordered Windows 11 Pro and the key was in my inbox before I'd closed the tab. Activation took two minutes. Genuine and fast."</p>
+        <div class="who"><span class="avatar">LV</span><div><div class="name">Lina V.</div><div class="role">Verified buyer · 🇲🇦</div></div><span class="verified" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>Verified</span></div>
+      </div>
+      <div class="rev-card reveal">
+        <div class="stars">★★★★★</div>
+        <p>"Switching to MAD pricing made it feel local. Support answered within minutes on a Mac install question. Would buy again."</p>
+        <div class="who"><span class="avatar">HN</span><div><div class="name">Hamza N.</div><div class="role">Verified buyer · 🇲🇦</div></div><span class="verified" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>Verified</span></div>
+      </div>
+      <div class="rev-card reveal">
+        <div class="stars">★★★★★</div>
+        <p>"Half the retail price for Office 2024, delivered instantly, fully licensed. Saved a fortune on a real, working product."</p>
+        <div class="who"><span class="avatar">ZK</span><div><div class="name">Zayd K.</div><div class="role">Verified buyer · 🇬🇧</div></div><span class="verified" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>Verified</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="section" id="faq" style="background:color-mix(in srgb,var(--bg-2) 82%,transparent);border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Before you buy</span>
+      <h2 class="sc-title">Frequently asked questions</h2>
+      <p>Everything you need to know.</p>
+    </div>
+    <div class="faq-wrap reveal">
+      <div class="faq-item"><button class="faq-q">How fast is delivery?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button><div class="faq-a"><p>Delivery is essentially instant. Your license key and a simple activation guide are emailed to you seconds after payment is confirmed.</p></div></div>
+      <div class="faq-item"><button class="faq-q">Are the licenses genuinely official?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button><div class="faq-a"><p>Yes. Every key is sourced from official distributors, is licensed and activation-verified, and carries our 100% genuine guarantee.</p></div></div>
+      <div class="faq-item"><button class="faq-q">Will it keep working after updates?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button><div class="faq-a"><p>Absolutely. Your key binds to your own account, so it continues working and receiving updates for the lifetime of the product — no subscription.</p></div></div>
+      <div class="faq-item"><button class="faq-q">What if I can't activate it?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button><div class="faq-a"><p>Our 24/7 support team will walk you through activation step by step. If we can't resolve it, you get a full refund within 14 days.</p></div></div>
+      <div class="faq-item"><button class="faq-q">Which currencies can I pay in?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button><div class="faq-a"><p>All prices update live across USD, EUR, GBP and MAD. Pick your currency in the header, and everything — catalog, cart and totals — converts instantly.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta-band">
+  <div class="container reveal">
+    <h2 class="sc-title">Grab your genuine license today</h2>
+    <p>Instant delivery, lifetime activation, secure checkout and real support — at up to 97% off.</p>
+    <a href="#catalog" class="btn btn-lg" style="padding:1.05rem 2.1rem">Shop the store now</a>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="container">
+    <div class="foot-grid">
+      <div>
+        <a href="#" class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span><span>Morphina<small>STORE</small></span></a>
+        <p style="color:var(--muted);font-size:.9rem;max-width:24rem;margin-top:.8rem">Genuine digital software licenses delivered instantly and backed by real support and a money-back guarantee.</p>
+        <div class="social">
+          <a href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7 8 8.2 12H17l-5.2-7.6L6 22H3l7.4-8.6L2.5 2H8l4.6 6.7z"/></svg></a>
+          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+          <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 12s0-3.9-.5-5.6a2.9 2.9 0 0 0-2-2C18.8 4 12 4 12 4s-6.8 0-8.5.4a2.9 2.9 0 0 0-2 2C1 8.1 1 12 1 12s0 3.9.5 5.6a2.9 2.9 0 0 0 2 2c1.7.4 8.5.4 8.5.4s6.8 0 8.5-.4a2.9 2.9 0 0 0 2-2c.5-1.7.5-5.6.5-5.6zM9.8 15.5v-7l6 3.5z"/></svg></a>
+          <a href="#" aria-label="Discord"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 5.5A16.5 16.5 0 0 0 15.9 4l-.2.5a12.3 12.3 0 0 1 3.7 1.9 12 12 0 0 0-10.8 0A12 12 0 0 1 12.3 4.5L12.1 4A16.5 16.5 0 0 0 8 5.5C5.3 9.5 4.6 13.3 5 17a16.6 16.6 0 0 0 5 5l.8-1.4c-1.3-.5-2.3-1.2-3.4-2.1.3-.2.6-.4.9-.6a11 11 0 0 0 10.4 0l.9.6c-1.1.9-2.1 1.6-3.4 2.1L17 22a16.6 16.6 0 0 0 5-5c.5-4.3-.7-8-2-11.5zM9.7 15.2c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2zm4.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2z"/></svg></a>
+        </div>
+      </div>
+
+      <div class="foot-col"><h4>Shop</h4><ul><li><a href="#catalog">All licenses</a></li><li><a href="#best">Best sellers</a></li><li><a href="#catalog">Operating systems</a></li><li><a href="#catalog">Office suites</a></li><li><a href="#catalog">AI tools</a></li></ul></div>
+      <div class="foot-col"><h4>Support</h4><ul><li><a href="#">Help center</a></li><li><a href="#">Activation guide</a></li><li><a href="#">Refund policy</a></li><li><a href="#">Terms of service</a></li><li><a href="#">Privacy policy</a></li></ul></div>
+      <div class="foot-col news"><h4>Stay in the loop</h4><p>Get exclusive deals and updates straight to your inbox.</p>
+        <form onsubmit="event.preventDefault(); toast('✅ Thanks! You are subscribed.'); this.reset();">
+          <input type="email" placeholder="Your email" required aria-label="Email" />
+          <button type="submit">Join</button>
+        </form>
+        <div class="pay-badges"><span class="pay-badge">VISA</span><span class="pay-badge">Mastercard</span><span class="pay-badge">PayPal</span><span class="pay-badge">BTC</span><span class="pay-badge">ETH</span><span class="pay-badge">Stripe</span></div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span id="year"></span> Morphina Store. All rights reserved.</span>
+      <span><a href="#">Terms</a><a href="#">Privacy</a><a href="#">Cookies</a></span>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ CART OVERLAY ============ -->
+<div class="overlay" id="overlay"></div>
+<aside class="cart-drawer" id="cartDrawer" aria-label="Shopping cart">
+  <div class="cart-head">
+    <h3>Your cart <span id="cartQty" style="color:var(--primary)"></span></h3>
+    <button id="closeCart" aria-label="Close cart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="cart-foot">
+    <div class="cart-totals" id="cartTotals" hidden></div>
+    <div class="cart-total"><span class="lbl">Total</span><span class="amt" id="cartTotal">$0</span></div>
+    <button class="btn btn-primary w-full" id="checkoutBtn">Checkout securely</button>
+    <button class="clear-cart" id="clearCartBtn" type="button">🗑️ Empty cart</button>
+    <div class="secure-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> 256-bit SSL encrypted checkout</div>
+  </div>
+</aside>
+
+<!-- ============ MULTI-STEP CHECKOUT MODAL ============ -->
+<div class="modal-backdrop" id="checkoutModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Checkout">
+    <div class="modal-head">
+      <h3>Secure checkout</h3>
+      <button id="coClose" aria-label="Close checkout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <!-- Step indicator -->
+    <div class="steps-dots" id="coDots">
+      <div class="step-dot active" data-step="1"><span class="dot">1</span><span class="lbl">Details</span></div>
+      <span class="dash" data-dash="1"></span>
+      <div class="step-dot" data-step="2"><span class="dot">2</span><span class="lbl">Payment</span></div>
+      <span class="dash" data-dash="2"></span>
+      <div class="step-dot" data-step="3"><span class="dot">3</span><span class="lbl">Review</span></div>
+    </div>
+
+    <div class="modal-body">
+      <!-- STEP 1: customer details -->
+      <div class="co-step active" data-step-body="1">
+        <div class="field">
+          <label for="coEmail">Email address <span style="color:var(--primary)">*</span></label>
+          <input id="coEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+          <div class="err">Please enter a valid email address.</div>
+          <div class="field-hint">Your license key will be delivered to this email instantly.</div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="coFirst">First name <span style="color:var(--primary)">*</span></label>
+            <input id="coFirst" type="text" placeholder="Jane" autocomplete="given-name" />
+            <div class="err">First name is required.</div>
+          </div>
+          <div class="field">
+            <label for="coLast">Last name <span style="color:var(--primary)">*</span></label>
+            <input id="coLast" type="text" placeholder="Doe" autocomplete="family-name" />
+            <div class="err">Last name is required.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: payment gateway -->
+      <div class="co-step" data-step-body="2">
+        <div class="pm-list" id="pmList">
+          <div class="pm-opt selected" data-pm="stripe">
+            <span class="radio"></span>
+            <span class="logo">💳</span>
+            <div>Credit / Debit Card
+              <small>Visa · Mastercard · Amex · Powered by Stripe</small>
+            </div>
+          </div>
+          <div class="pm-opt" data-pm="paypal">
+            <span class="radio"></span>
+            <span class="logo">🅿️</span>
+            <div>PayPal
+              <small>Pay with your PayPal balance or linked card</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- STRIPE: Card Element mounts here (dynamic iframe). -->
+        <div id="stripeArea">
+          <div id="cardElement" class="stripe-card"></div>
+          <div class="pm-frame" id="stripeSecure" style="margin-top:1rem">
+            <span>🔒</span>
+            <span><b>Card details are tokenized by Stripe</b></span>
+            <span>Your card number never touches our servers. Payment confirms on the review step.</span>
+          </div>
+          <div class="pm-frame" id="stripeMeta" style="margin-top:.6rem" hidden></div>
+        </div>
+
+        <!-- PAYPAL: Smart Buttons render on the review step (Step 3). -->
+        <div id="paypalArea" hidden>
+          <div class="pm-frame" style="margin-top:1rem">
+            <span>🅿️</span>
+            <span><b>PayPal Express Checkout</b></span>
+            <span>Review your order, then confirm payment with the PayPal Smart Button on the next step.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: order summary & review -->
+      <div class="co-step" data-step-body="3">
+        <div id="reviewItems" class="co-summary" style="margin-bottom:1rem"></div>
+        <div id="reviewTotals" class="co-summary"></div>
+        <!-- PayPal Smart Buttons container (only shown when PayPal is selected) -->
+        <div id="paypalButtonContainer" style="margin-top:1.2rem" hidden></div>
+        <div id="paypalFallback" class="pm-frame" style="margin-top:1rem" hidden></div>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="coBack" hidden>← Back</button>
+      <div style="display:flex;gap:.7rem;margin-left:auto">
+        <button class="btn btn-ghost" id="coSkip" hidden>Skip</button>
+        <button class="btn btn-primary" id="coNext">Continue</button>
+        <button class="btn btn-primary" id="placeOrder" hidden>
+          <span class="spinner" hidden></span>
+          <span class="btn-label" id="placeOrderLabel">Pay securely</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ORDER SUCCESS MODAL ============ -->
+<div class="modal-backdrop" id="successModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Order confirmed">
+    <div class="success-modal">
+      <div class="check-ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12l5 5L20 6"/></svg></div>
+      <h3>Order confirmed 🎉</h3>
+      <p id="successText">Your license key has been generated and is ready below.</p>
+      <div class="key-box">
+        <code id="successKey">XXXXX-XXXXX-XXXXX-XXXXX</code>
+        <button class="copy" id="copyKey">Copy Key</button>
+      </div>
+      <div class="email-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg> Key emailed to <b id="successEmail" style="color:var(--ink)"></b></div>
+      <button class="btn btn-primary w-full" id="successClose" style="max-width:260px;margin:0 auto">Continue shopping</button>
+      <div class="note">Keep this key safe. You'll also receive it by email by <span id="successRef" style="color:var(--ink);font-weight:700"></span>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Three.js CDN (loads when online; hero falls back to CSS 3D cards otherwise) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* ==========================================================================
+   MORPHINA STORE — APPLICATION LOGIC (modular vanilla JS)
+   ========================================================================== */
+(function(){
+  'use strict';
+
+  /* ---------- 1. STATE & DATA ---------- */
+  const RATES = { USD:1, EUR:0.92, GBp:0.79, MAD:10.0 };
+  const SYMBOL = { USD:'$', EUR:'€', GBP:'£', MAD:'MAD' };
+  const TAX_RATE = 0;   // 0 = no tax; set e.g. 0.0825 to apply a sales/VAT rate. Applied in USD then re-formatted.
+  const CART_KEY = 'morphina_cart';
+  const state = {
+    currency: localStorage.getItem('morphina_cur') || 'USD',
+    theme: localStorage.getItem('morphina_theme') || 'dark',
+    cat: 'all',
+    query: '',
+    cart: loadCart()
+  };
+  // --- cart persistence helpers ---
+  function loadCart(){
+    try{ return JSON.parse(localStorage.getItem(CART_KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function saveCart(){
+    localStorage.setItem(CART_KEY, JSON.stringify(state.cart));
+  }
+
+  /* =====================================================================
+     KINGUIN API AUTO-DELIVERY CONFIG
+     ---------------------------------------------------------------------
+     This block prepares the storefront for Kinguin's REST API so that a
+     license KEY is issued automatically the moment a payment succeeds.
+
+     LIVE FLOW (once wired):
+       1. Customer clicks "Checkout securely".
+       2. We POST the order to our payment provider (Stripe/PayPal) → `createPaymentIntent()`.
+       3. On payment success we POST an order to the Kinguin API with the items'
+          Kinguin `sku`s (the per-product `sku` field above) using `apiKey`.
+       4. Kinguin returns the license key(s) → we store them and email the buyer
+          (auto-delivery). See `KinguinClient.placeOrder()` below.
+
+     SECURITY: NEVER expose `apiKey` in client-side code. In production, proxy
+     every Kinguin call through YOUR backend (a serverless function or an API
+     route) that holds the key and stamps the timestamp + signature server-side.
+     ===================================================================== */
+  const KINGUIN = {
+    enabled: false,                          // ← set true once a backend proxy is live
+    baseUrl: 'https://api.kinguin.net',      // Kinguin API root
+    signEndpoint: '/v4/sign',                // HMAC signature endpoint (server-side)
+    orderEndpoint: '/v4/orders',             // create-order / key-issuance endpoint
+    paymentEndpoint: '/v4/orders/{id}/payments', // payment-confirmation → key release
+    apiKey: 'REPLACE_WITH_YOUR_SERVER_SIDE_KEY', // placeholder — kept server-side
+    // Optional dynamic pricing re-check against Kinguin wholesale cost at checkout.
+    margin: 0.22,                            // ≈22% target gross margin above wholesale
+  };
+
+  /* =====================================================================
+     PAYMENT GATEWAY KEYS & CONFIG
+     ---------------------------------------------------------------------
+     ⚠️  PLACE YOUR REAL KEYS HERE  ⚠️
+     • PAYPAL.clientId  → from the PayPal Developer Dashboard (Live/Test app).
+                         The PayPal SDK is loaded lazily, on demand, when the
+                         customer reaches Step 2 — so no network call happens
+                         until checkout is opened.
+     • STRIPE.publishableKey → from the Stripe Dashboard (pk_test_… / pk_live_…).
+                         This is a PUBLIC key and is safe to ship in the frontend.
+                         Your SECRET key must stay server-side (see the backend
+                         proxy comments in KINGUIN above) — never expose it here.
+     ===================================================================== */
+  const PAYPAL = {
+    clientId: 'YOUR_PAYPAL_CLIENT_ID',   // ← paste your PayPal Client ID
+    currency: 'USD',                     // PayPal settlement currency (non-USD requires a live merchant account)
+    intent: 'capture',                   // 'authorize' or 'capture'
+  };
+  const STRIPE = {
+    publishableKey: 'YOUR_STRIPE_PUBLISHABLE_KEY', // ← paste your Stripe publishable key (pk_…)
+    style: { base: { color:'', fontFamily:'inherit', fontSize:'15px', '::placeholder':{color:'#94a3c6'} } },
+  };
+  // Builds the payload Kinguin needs for a single cart line. Extend freely.
+  function kinguinLine(p, qty){
+    return {
+      productId: p.sku,     // Kinguin catalog id — `sku` on each PRODUCT
+      quantity: qty,
+      currency: 'USD',      // Kinguin settles in USD; we display in `state.currency`
+      unitPriceUsd: p.price // our chosen retail price (already undercuts the market)
+    };
+  }
+  /* The order object sent to the Kinguin auto-delivery endpoint. */
+  function buildKinguinOrder(cartSnapshot){
+    return {
+      invoiceType: 'personal',
+      items: cartSnapshot.map(li => kinguinLine(li.product, li.qty)),
+      customer: { email: 'customer@example.com', accountId: 'guest' },
+      locale: state.currency,
+    };
+  }
+
+  // BASE PRICES ARE IN USD. All prices are re-priced live by the currency selector.
+  //
+  // PRICING STRATEGY (Kinguin Integration):
+  //   price  = the customer-facing retail price, tuned to UNDER-CUT the current
+  //            Kinguin / G2A market rate while preserving a healthy margin over
+  //            our Kinguin wholesale cost. These are the "win" prices.
+  //   old    = a REALISTIC MSRP anchor (street/box price), NOT inflated placeholders
+  //            (e.g. no more $18,749). It feeds the strikethrough price + "% OFF".
+  //   sku    = the Kinguin catalog product-id used by the auto-delivery API
+  //            (KEY_ISSUANCE). Placeholder strings — swap in real Kinguin SKUs.
+  //   imgSrc = official cover image (see /img/*). Falls back to the emoji + gradient
+  //            thumbnail automatically if the file can't load (e.g. offline preview).
+  const PRODUCTS = [
+    // Operating Systems
+    {id:'os1', cat:'os', sku:'KG-W11P-RET', name:'Windows 11 Pro (Retail)', desc:'Retail digital key · lifetime activation', ic:'🪟', grad:'#0ea5e9,#6366f1', imgSrc:'img/win11.jpg', price:13.99, old:29.99, rating:4.97, reviews:2140},
+    {id:'os2', cat:'os', sku:'KG-W11H-RET', name:'Windows 11 Home (Retail)', desc:'Retail digital key · lifetime activation', ic:'🪟', grad:'#0ea5e9,#6366f1', imgSrc:'img/win11.jpg', price:11.99, old:24.99, rating:4.98, reviews:1780},
+    {id:'os3', cat:'os', sku:'KG-W11P-OEM', name:'Windows 11 Pro (OEM)', desc:'OEM digital key · 1 device', ic:'🪟', grad:'#0ea5e9,#6366f1', imgSrc:'img/win11.jpg', price:12.99, old:22.99, rating:4.96, reviews:1210},
+    {id:'os4', cat:'os', sku:'KG-W10P-RET', name:'Windows 10 Pro (Retail)', desc:'Retail digital key · lifetime activation', ic:'💻', grad:'#0ea5e9,#6366f1', imgSrc:'img/win10.jpg', price:7.99, old:19.99, rating:4.9, reviews:980},
+    {id:'os5', cat:'os', sku:'KG-W11E-ENT', name:'Windows 11 Enterprise', desc:'Corporate license · lifetime', ic:'🖥️', grad:'#0ea5e9,#6366f1', imgSrc:'img/win11.jpg', price:22.99, old:49.99, rating:4.85, reviews:540},
+    // Office Suites
+    {id:'of1', cat:'office', sku:'KG-OF24-PP', name:'Office 2024 Professional Plus', desc:'Word, Excel, PowerPoint + more', ic:'📊', grad:'#f59e0b,#ef4444', imgSrc:'img/office2024.jpg', price:26.99, old:79.99, rating:5.0, reviews:860},
+    {id:'of2', cat:'office', sku:'KG-OF21-PP', name:'Office 2021 Professional Plus', desc:'Retail digital key · lifetime', ic:'📊', grad:'#f59e0b,#ef4444', imgSrc:'img/office2021.png', price:14.99, old:49.99, rating:4.95, reviews:1540},
+    {id:'of3', cat:'office', sku:'KG-OF21-HB', name:'Office 2021 Home & Business', desc:'Mac + PC · lifetime activation', ic:'📘', grad:'#f59e0b,#ef4444', imgSrc:'img/office2021.png', price:12.99, old:39.99, rating:4.93, reviews:760},
+    {id:'of4', cat:'office', sku:'KG-365-PH', name:'Office / Microsoft 365 (1 Year)', desc:'Cloud subscription · 5 PC/Mac', ic:'☁️', grad:'#f59e0b,#ef4444', imgSrc:'img/microsoft365.jpg', price:16.99, old:29.99, rating:4.94, reviews:1320},
+    // Antivirus
+    {id:'av1', cat:'antivirus', sku:'KG-AVAST-PS', name:'Avast Premium Security', desc:'1 year · 10 devices', ic:'🛡️', grad:'#10b981,#22d3ee', imgSrc:'img/avast.png', price:18.99, old:39.99, rating:5.0, reviews:610},
+    {id:'av2', cat:'antivirus', sku:'KG-KASP-TS', name:'Kaspersky Total Security', desc:'1 year · 5 devices', ic:'🛡️', grad:'#10b981,#22d3ee', imgSrc:'img/kaspersky.webp', price:20.99, old:44.99, rating:4.99, reviews:720},
+    {id:'av3', cat:'antivirus', sku:'KG-ESET-SSP', name:'ESET Smart Security Premium', desc:'1 year · 5 devices', ic:'🔰', grad:'#10b981,#22d3ee', imgSrc:'img/eset.jpg', price:22.99, old:49.99, rating:5.0, reviews:430},
+    {id:'av4', cat:'antivirus', sku:'KG-NORTON-36', name:'Norton 360 Deluxe', desc:'1 year · 5 devices', ic:'🛡️', grad:'#10b981,#22d3ee', imgSrc:'', price:14.99, old:29.99, rating:4.75, reviews:380},
+    // AI Licenses
+    {id:'ai1', cat:'ai', sku:'KG-CHATGPT-P', name:'ChatGPT Plus (1 Year · Shared)', desc:'Premium AI access · GPT-4', ic:'🤖', grad:'#a855f7,#ec4899', imgSrc:'img/chatgpt.jpg', price:63.99, old:119.99, rating:4.9, reviews:940},
+    {id:'ai2', cat:'ai', sku:'KG-GEMINI-A', name:'Gemini Advanced (1 Year · Shared)', desc:'Google AI · 2TB storage', ic:'✨', grad:'#a855f7,#ec4899', imgSrc:'img/gemini.png', price:59.99, old:119.99, rating:4.8, reviews:520},
+    {id:'ai3', cat:'ai', sku:'KG-CLAUDE-P', name:'Claude Pro (1 Year · Shared)', desc:'Anthropic AI · full model access', ic:'🧠', grad:'#a855f7,#ec4899', imgSrc:'img/chatgpt.jpg', price:55.99, old:99.99, rating:4.9, reviews:430},
+    {id:'ai4', cat:'ai', sku:'KG-COPILOT-P', name:'Microsoft Copilot Pro (1 Year)', desc:'Office AI assistant', ic:'🤝', grad:'#a855f7,#ec4899', imgSrc:'img/copilot.png', price:54.99, old:99.99, rating:4.7, reviews:300},
+    // Graphics
+    {id:'gr1', cat:'graphics', sku:'KG-PS-1Y', name:'Adobe Photoshop (1 Year)', desc:'Creative Cloud · full version', ic:'🎨', grad:'#ef4444,#ec4899', imgSrc:'img/photoshop.jpg', price:73.99, old:139.99, rating:4.95, reviews:560},
+    {id:'gr2', cat:'graphics', sku:'KG-AI-1Y', name:'Adobe Illustrator (1 Year)', desc:'Vector design · full version', ic:'🖌️', grad:'#ef4444,#ec4899', imgSrc:'img/illustrator.webp', price:73.99, old:139.99, rating:4.9, reviews:410},
+    {id:'gr3', cat:'graphics', sku:'KG-COREL-1Y', name:'CorelDRAW Graphics Suite', desc:'Design suite · lifetime', ic:'✏️', grad:'#ef4444,#ec4899', imgSrc:'', price:49.99, old:99.99, rating:4.85, reviews:280},
+    {id:'gr4', cat:'graphics', sku:'KG-CANVA-1Y', name:'Canva Pro (1 Year)', desc:'Design & AI features', ic:'🎨', grad:'#ef4444,#ec4899', imgSrc:'', price:29.99, old:59.99, rating:4.8, reviews:640},
+  ];
+
+  const CATS = { os:['#0ea5e9','#6366f1'], office:['#f59e0b','#ef4444'], antivirus:['#10b981','#22d3ee'], ai:['#a855f7','#ec4899'], graphics:['#ef4444','#ec4899'] };
+  const CATNAME = { os:'Operating Systems', office:'Office Suites', antivirus:'Antivirus', ai:'AI Tools', graphics:'Graphics' };
+  const FEATURED = ['os1','of1','av2','ai1','gr1'];
+
+  /* ---------- 2. HELPERS ---------- */
+  const $  = (s, el=document) => el.querySelector(s);
+  const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+  function fmt(usd){
+    const v = usd * RATES[state.currency];
+    const s = SYMBOL[state.currency];
+    if(state.currency === 'MAD') return s + ' ' + Math.round(v).toLocaleString('en-US');
+    return s + v.toFixed(2).replace(/\.00$/, '');
+  }
+  function savePct(o,n){ return Math.round((1 - n/o)*100); }
+  function stars(r){
+    let full = Math.round(r);
+    if(full > 5) full = 5;
+    return '★'.repeat(full) + '☆'.repeat(5-full);
+  }
+  function toast(msg, type='success'){
+    const t = $('#toast');
+    t.className = 'show ' + (type==='error' ? 't-error' : type==='info' ? 't-info' : 't-success');
+    t.innerHTML = msg;
+    clearTimeout(t._t);
+    t._t = setTimeout(()=>{ t.className=''; }, 2800);
+  }
+  function cardHTML(p){
+    const pct = savePct(p.old, p.price);
+    return `
+      <article class="p-card reveal in" data-id="${p.id}" data-cat="${p.cat}">
+        <div class="p-thumb" style="background:linear-gradient(135deg,${p.grad})">
+          <span class="cat-tag">${CATNAME[p.cat]}</span>
+          <span class="sale-tag">-${pct}%</span>
+          <span class="icon">${p.ic}</span>
+          ${p.imgSrc ? `<img class="p-img" src="${p.imgSrc}" alt="${p.name}" loading="lazy" onerror="this.remove()" />` : ''}
+        </div>
+        <div class="p-body">
+          <div class="p-cat">${CATNAME[p.cat]}</div>
+          <div class="p-name">${p.name}</div>
+          <div class="p-desc">${p.desc}</div>
+          <div class="p-rating"><span class="stars">${stars(p.rating)}</span> ${p.rating.toFixed(2)} <span>(${p.reviews})</span></div>
+          <div class="p-price">
+            <span class="cur-val">${fmt(p.price)}</span>
+            <span class="cur-old">${fmt(p.old)}</span>
+            <span class="cur-save">Save ${pct}%</span>
+          </div>
+          <div class="p-buy">
+            <a class="btn btn-primary" data-add="${p.id}" href="#catalog" onclick="return false;">Buy now</a>
+            <button class="btn btn-ghost btn-sm" style="padding:.72rem .7rem" data-add="${p.id}">+ Cart</button>
+          </div>
+        </div>
+      </article>`;
+  }
+
+  /* ---------- 3. RENDER CATALOG + BEST SELLERS ---------- */
+  function renderCatalog(){
+    const grid = $('#productGrid');
+    const list = PRODUCTS.filter(p =>
+      (state.cat==='all' || p.cat===state.cat) &&
+      (p.name + ' ' + CATNAME[p.cat]).toLowerCase().includes(state.query.toLowerCase())
+    );
+    grid.innerHTML = list.map(cardHTML).join('');
+    $('#noResults').style.display = list.length ? 'none' : 'block';
+  }
+  function renderBest(){
+    const best = PRODUCTS.filter(p => FEATURED.includes(p.id));
+    $('#bestGrid').innerHTML = best.map(cardHTML).join('');
+  }
+  function repriceAll(){
+    renderCatalog();
+    renderBest();
+    renderCart();
+  }
+
+  /* ---------- 4. CART ---------- */
+  /* Recompute cart financials. Product prices are stored in USD; fmt() converts
+     to the active display currency. Subtotal + tax(if any) + total computed live. */
+  function cartTotals(){
+    const ids = Object.keys(state.cart);
+    const subtotal = ids.reduce((a,k)=> a + PRODUCTS.find(x=>x.id===k).price * state.cart[k], 0);
+    const tax = subtotal * TAX_RATE;
+    return { ids, subtotal, tax, total: subtotal + tax, count: ids.reduce((a,k)=>a+state.cart[k],0) };
+  }
+  function renderCart(){
+    const { ids, subtotal, tax, total, count } = cartTotals();
+    $('#cartCount').textContent = count;
+    $('#cartQty').textContent = count ? `(${count})` : '';
+    const box = $('#cartItems');
+    if(!ids.length){
+      box.innerHTML = `<div class="empty"><div class="big">🛒</div><div>Your cart is empty</div><div style="font-size:.82rem">Add a license to get started.</div></div>`;
+      $('#cartTotals').hidden = true;
+    } else {
+      box.innerHTML = ids.map(id => {
+        const p = PRODUCTS.find(x=>x.id===id);
+        const q = state.cart[id];
+        return `<div class="cart-item">
+          <div class="thumb" style="background:linear-gradient(135deg,${p.grad})">${p.imgSrc ? `<img src="${p.imgSrc}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px" onerror="this.remove()">` : p.ic}</div>
+          <div class="info"><div class="nm">${p.name}</div><div class="pr">${fmt(p.price)} each</div></div>
+          <div class="qty"><button data-dec="${id}">−</button><span>${q}</span><button data-inc="${id}">+</button></div>
+          <button class="rm" data-rm="${id}" aria-label="Remove"><span class="cart-rm">✕</span></button>
+        </div>`;
+      }).join('');
+      const taxHTML = TAX_RATE
+        ? `<div class="tr"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+            <div class="tr"><span>Tax (${(TAX_RATE*100).toFixed(2)}%)</span><span>${fmt(tax)}</span></div>`
+        : `<div class="tr"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+            <div class="tr"><span>Tax</span><span>Included</span></div>`;
+      $('#cartTotals').innerHTML = `${taxHTML}<div class="tr grand"><span>Total</span><span>${fmt(total)}</span></div>`;
+      $('#cartTotals').hidden = false;
+    }
+    $('#cartTotal').textContent = fmt(total);
+  }
+
+  function addToCart(id, qty=1){
+    state.cart[id] = (state.cart[id]||0) + qty;
+    saveCart();
+    renderCart();
+    const p = PRODUCTS.find(x=>x.id===id);
+    toast(`<span>🛒 Added <b>${p.name}</b> to cart.</span>`, 'success');
+  }
+  // Unified qty setter (handles inc/dec/remove/clear) + persistence
+  function setQty(id, qty){
+    if(qty<=0) delete state.cart[id];
+    else state.cart[id] = qty;
+    saveCart(); renderCart();
+  }
+  function clearCart(){
+    state.cart = {};
+    saveCart(); renderCart();
+    toast('🧹 Cart cleared.', 'info');
+  }
+  function openCart(){ $('#overlay').classList.add('open'); $('#cartDrawer').classList.add('open'); document.body.style.overflow='hidden'; }
+  function closeCart(){ $('#overlay').classList.remove('open'); $('#cartDrawer').classList.remove('open'); document.body.style.overflow=''; }
+
+  // Cart delegation (inc/dec/remove)
+  $('#cartItems').addEventListener('click', e=>{
+    const inc=e.target.closest('[data-inc]'), dec=e.target.closest('[data-dec]'), rm=e.target.closest('[data-rm]');
+    if(inc){ const id=inc.dataset.inc; setQty(id, (state.cart[id]||0)+1); }
+    else if(dec){ const id=dec.dataset.dec; setQty(id, (state.cart[id]||0)-1); }
+    else if(rm){ const id=rm.dataset.rm; setQty(id, 0); }
+  });
+  $('#clearCartBtn').addEventListener('click', clearCart);
+
+  /* =====================================================================
+     MULTI-STEP CHECKOUT MODAL
+     ---------------------------------------------------------------------
+     Step 1 → customer details (email + names, validated).
+     Step 2 → payment gateway selection (Stripe / PayPal, SDK placeholders).
+     Step 3 → order summary & review.
+     "Pay securely" runs the Kinguin auto-delivery handshake, shows a spinner,
+     then reveals the Order-Success modal with the generated key + copy button
+     and an email-dispatch confirmation.
+     ===================================================================== */
+  let checkoutStep = 1, selectedPM = 'stripe';
+  // holds lazily-initialised gateway handles & flags (SDKs load on demand)
+  const gateway = { stripeReady:false, stripe:null, elements:null, card:null, paypalRendered:false };
+  // inject an external SDK <script> on demand (never blocks first paint)
+  function loadScript(src){
+    return new Promise((resolve,reject)=>{
+      if(document.querySelector('script[src="'+src+'"]')) return resolve();
+      const s = document.createElement('script');
+      s.src = src; s.async = true;
+      s.onload = ()=>resolve(s);
+      s.onerror = ()=>reject(new Error('Failed to load '+src));
+      document.head.appendChild(s);
+    });
+  }
+  // Stripe Card Element theme-aware style
+  function stripeStyle(){
+    const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+    return {
+      base: { color:dark?'#e8efff':'#0b1a33', fontFamily:'inherit', fontSize:'15px',
+              '::placeholder':{ color:dark?'#93a3c6':'#8a97b0' } },
+      invalid: { color:'#fb7185' }
+    };
+  }
+  // surface a note inside the gateway area (e.g. SDK failed to load)
+  function showGatewayNote(sel, msg){ const el=$(sel); if(!el) return; el.innerHTML='⚠️ '+msg; el.hidden=false; }
+  // validation for Step 2/3 actions that depend on a valid email
+  function ensureEmail(){ return EMAIL_RE.test($('#coEmail').value.trim()); }
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function goToStep(n){
+    checkoutStep = n;
+    $$('.co-step').forEach(el=>el.classList.toggle('active', +el.dataset.stepBody === n));
+    // step indicator
+    $$('#coDots .step-dot').forEach(d=>{
+      const s = +d.dataset.step;
+      d.classList.toggle('active', s===n);
+      d.classList.toggle('done', s<n);
+    });
+    $$('#coDots .dash').forEach(d=>d.classList.toggle('done', +d.dataset.dash < n));
+    $('#coBack').hidden = n===1;
+    $('#coNext').hidden = n===3;
+    if(n===3) renderReview();
+    updatePaymentUI();
+  }
+  /* Show/hide the dynamic gateway UI for the selected method and lazy-load the
+     relevant SDK. Stripe: mounts the Card Element on Step 2. PayPal: renders the
+     Smart Buttons on the Step 3 review screen (where the transaction is placed). */
+  function updatePaymentUI(){
+    const isPayPal = selectedPM === 'paypal';
+    $('#stripeArea').hidden = isPayPal;
+    $('#paypalArea').hidden = !isPayPal;
+    $('#paypalButtonContainer').hidden = !(isPayPal && checkoutStep===3);
+    // "Pay securely" is the Stripe action, shown on the review step only.
+    $('#placeOrder').hidden = !(checkoutStep===3 && !isPayPal);
+    if(isPayPal && checkoutStep===3) renderPayPal();
+    else if(!isPayPal) renderStripe();
+  }
+  // field-level validation helpers
+  function setFieldError(input, on){
+    input.classList.toggle('invalid', on);
+    const f = input.closest('.field'); if(f) f.classList.toggle('has-err', on);
+    return !on;
+  }
+  function validDetails(){
+    const email=$('#coEmail'), first=$('#coFirst'), last=$('#coLast');
+    let ok = true;
+    ok = setFieldError(email, !EMAIL_RE.test(email.value.trim())) && ok;
+    ok = setFieldError(first, !first.value.trim()) && ok;
+    ok = setFieldError(last, !last.value.trim()) && ok;
+    return ok;
+  }
+  // live clear an error once the user starts typing a valid value
+  ['#coEmail','#coFirst','#coLast'].forEach(sel=>{
+    const el = $(sel);
+    if(el) el.addEventListener('input', ()=>setFieldError(el, false));
+  });
+  function renderReview(){
+    const { ids, subtotal, tax, total } = cartTotals();
+    $('#reviewItems').innerHTML = ids.map(id=>{
+      const p = PRODUCTS.find(x=>x.id===id), q = state.cart[id];
+      return `<div class="review-item">
+        <div class="thumb" style="background:linear-gradient(135deg,${p.grad})">${p.imgSrc ? `<img src="${p.imgSrc}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:9px" onerror="this.remove()">` : p.ic}</div>
+        <div><div class="nm">${p.name}</div><div class="sub">Qty ${q} · Digital delivery</div></div>
+        <div class="pr">${fmt(p.price*q)}</div></div>`;
+    }).join('');
+    const taxHTML = TAX_RATE
+      ? `<div class="co-row"><span class="lbl">Tax</span><span>${fmt(tax)}</span></div>`
+      : '<div class="co-row"><span class="lbl">Tax</span><span>Included</span></div>';
+    $('#reviewTotals').innerHTML = `<div class="co-row"><span class="lbl">Subtotal</span><span>${fmt(subtotal)}</span></div>${taxHTML}<div class="co-row total"><span class="lbl">Total</span><span>${fmt(total)}</span></div>`;
+  }
+  function openCheckout(){
+    if(!Object.keys(state.cart).length){ toast('🛒 Your cart is empty — add a license first.', 'info'); return; }
+    $('#checkoutModal').classList.add('open');
+    document.body.style.overflow='hidden';
+    goToStep(1);
+  }
+  function closeCheckout(){
+    if($('#placeOrder').getAttribute('data-loading')==='1') return; // block close mid-payment
+    $('#checkoutModal').classList.remove('open');
+    document.body.style.overflow='';
+  }
+  // payment method switcher (PayPal ⇄ Credit Card / Stripe)
+  $('#pmList').addEventListener('click', e=>{
+    const opt = e.target.closest('.pm-opt'); if(!opt) return;
+    selectedPM = opt.dataset.pm;
+    $$('.pm-opt').forEach(o=>o.classList.toggle('selected', o===opt));
+    updatePaymentUI();
+  });
+  $('#coNext').addEventListener('click', ()=>{
+    if(checkoutStep===1 && !validDetails()){ toast('⚠️ Please fix the highlighted fields.', 'error'); return; }
+    goToStep(checkoutStep+1);
+  });
+  $('#coBack').addEventListener('click', ()=>goToStep(checkoutStep-1));
+  $('#coClose').addEventListener('click', closeCheckout);
+  $('#checkoutModal').addEventListener('click', e=>{ if(e.target.id==='checkoutModal') closeCheckout(); });
+
+  /* =====================================================================
+     PAYPAL SMART BUTTONS (production-ready)
+     ---------------------------------------------------------------------
+     SDK: https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID
+     Loaded lazily on the review step. `createOrder` builds the purchase unit
+     from the live cart total; `onApprove` CAPTURES the transaction, then fires
+     the Kinguin fulfillment (`completeOrder`) so the key is released on screen.
+     Set PAYPAL.clientId above to enable real payments (placeholder otherwise).
+     ===================================================================== */
+  async function renderPayPal(){
+    if(gateway.paypalRendered) return;
+    if(typeof paypal === 'undefined'){
+      try{
+        await loadScript('https://www.paypal.com/sdk/js?client-id='+encodeURIComponent(PAYPAL.clientId)
+          +'&currency='+encodeURIComponent(PAYPAL.currency)+'&intent='+encodeURIComponent(PAYPAL.intent));
+      }catch(err){ showGatewayNote('#paypalFallback','PayPal could not be loaded — use card payment or check your connection.'); return; }
+    }
+    if(typeof paypal === 'undefined' || !paypal.Buttons){
+      showGatewayNote('#paypalFallback','PayPal Smart Buttons are unavailable.'); return;
+    }
+    const light = document.documentElement.getAttribute('data-theme')==='light';
+    try{
+      paypal.Buttons({
+        style: { layout:'vertical', shape:'rect', color: light?'gold':'blue', label:'pay', height:44 },
+        createOrder: (data, actions)=> actions.order.create({
+          purchase_units:[{ amount:{ value: cartTotals().total.toFixed(2), currency_code: PAYPAL.currency } }]
+        }),
+        onApprove: async (data, actions)=>{
+          try{
+            const details = await actions.order.capture();          // capture the transaction
+            await completeOrder('paypal', data.orderID, details);   // Kinguin fulfillment + success modal
+          }catch(err){
+            console.error('PayPal capture failed:', err);
+            toast('⚠️ PayPal payment could not be captured. Please try again.', 'error');
+          }
+        },
+        onCancel: ()=> toast('PayPal checkout was cancelled — no charge was made.', 'info'),
+        onError: (err)=> toast('⚠️ PayPal error: '+(err && err.message || 'please try again.'), 'error'),
+      }).render('#paypalButtonContainer');
+      gateway.paypalRendered = true;
+    }catch(err){ showGatewayNote('#paypalFallback','Unable to render PayPal buttons.'); }
+  }
+
+  /* =====================================================================
+     STRIPE CARD ELEMENT (production-ready)
+     ---------------------------------------------------------------------
+     SDK: https://js.stripe.com/v3/   (set STRIPE.publishableKey above)
+     Mounts a Card Element on Step 2. `submitOrder` validates, calls
+     `stripe.createToken(card)` (a client-side token placeholder), and on success
+     fires the Kinguin fulfillment. In production you'd POST the token to YOUR
+     backend to create a PaymentIntent/charge + set up the webhook.
+     ===================================================================== */
+  async function renderStripe(){
+    if(gateway.stripeReady) return;
+    if(typeof Stripe === 'undefined'){
+      try{ await loadScript('https://js.stripe.com/v3/'); }
+      catch(err){ showGatewayNote('#stripeMeta','Stripe could not be loaded — check your connection.'); return; }
+    }
+    if(typeof Stripe === 'undefined'){ showGatewayNote('#stripeMeta','Stripe is unavailable.'); return; }
+    gateway.stripe = Stripe(STRIPE.publishableKey);
+    gateway.elements = gateway.stripe.elements();
+    gateway.card = gateway.elements.create('card', { style: stripeStyle(), hidePostalCode:true });
+    gateway.card.mount('#cardElement');
+    gateway.card.on('focus', ()=>$('#cardElement').classList.add('focused'));
+    gateway.card.on('blur',  ()=>$('#cardElement').classList.remove('focused'));
+    gateway.stripeReady = true;
+  }
+
+  /* ---- STRIPE submit: token → fulfillment ---- */
+  async function submitOrder(){
+    if(selectedPM !== 'stripe') return;           // PayPal is driven by its own button
+    const btn = $('#placeOrder');
+    btn.setAttribute('data-loading','1');
+    btn.querySelector('.spinner').hidden = false;
+    const label = $('#placeOrderLabel'), orig = label.textContent;
+    label.textContent = 'Processing…';
+    try{
+      if(!gateway.stripe || !gateway.card) throw new Error('Card form is not ready yet.');
+      if(!ensureEmail()) throw new Error('A valid email is required for key delivery.');
+      // Client-side token creation (placeholder — see PaymentIntent comment above)
+      const { token, error } = await gateway.stripe.createToken(gateway.card);
+      if(error) throw new Error(error.message || 'Card details are invalid.');
+      await completeOrder('stripe', token && token.id, { token: token && token.id });
+    }catch(err){
+      console.error('Stripe error:', err);
+      toast('⚠️ '+(err.message || 'Payment failed. Please verify your card details.'), 'error');
+    }finally{
+      btn.removeAttribute('data-loading');
+      btn.querySelector('.spinner').hidden = true;
+      label.textContent = orig;
+      goToStep(1);
+    }
+  }
+  $('#placeOrder').addEventListener('click', submitOrder);
+
+  /* =====================================================================
+     SHARED FULFILLMENT — runs the Kinguin handshake + success modal.
+     Called by BOTH gateways once payment is authorized/captured.
+     provider = 'stripe' | 'paypal'; paymentRef = token.id or PayPal order id.
+     ===================================================================== */
+  async function completeOrder(provider, paymentRef, details){
+    const btn = $('#placeOrder');   // hidden for PayPal, but guarded
+    if(btn){ btn.setAttribute('data-loading','1'); const sp=btn.querySelector('.spinner'); if(sp) sp.hidden=false; }
+    try{
+      const email = $('#coEmail').value.trim();
+      const orderItems = Object.keys(state.cart).map(id=>({ product: PRODUCTS.find(x=>x.id===id), qty: state.cart[id] }));
+      // ★ Kinguin auto-delivery (availability → purchase → capture keys) ★
+      const keys = await processKinguinOrder(orderItems, email || 'customer@example.com');
+      // Log the order (production: POST to your order store / DB)
+      console.info('📦 ORDER COMPLETE', { provider, paymentRef, ...(details||{}), email, items: orderItems, keys });
+      // Success modal
+      $('#successEmail').textContent = email || 'your email';
+      $('#successRef').textContent = new Date(Date.now()+3600e3).toLocaleString();
+      $('#successKey').textContent = keys.map(k=>k.key).join('\n');
+      $('#successText').textContent = `${orderItems.length} license${orderItems.length>1?'s are':' is'} ready — your key${keys.length>1?'s are':' is'} below.`;
+      $('#checkoutModal').classList.remove('open');
+      $('#successModal').classList.add('open');
+      toast('✅ Payment successful — order confirmed!', 'success');
+      clearCart();
+    }catch(err){
+      console.error('Order failed:', err);
+      throw err;   // let the caller surface the right toast
+    }finally{
+      if(btn){ btn.removeAttribute('data-loading'); const sp=btn.querySelector('.spinner'); if(sp) sp.hidden=true; }
+    }
+  }
+  // success modal close
+  function closeSuccess(){ $('#successModal').classList.remove('open'); document.body.style.overflow=''; }
+  $('#successClose').addEventListener('click', closeSuccess);
+  $('#successModal').addEventListener('click', e=>{ if(e.target.id==='successModal') closeSuccess(); });
+
+  // copy key to clipboard (with graceful fallback)
+  $('#copyKey').addEventListener('click', async ()=>{
+    const text = $('#successKey').textContent.trim();
+    try{
+      await navigator.clipboard.writeText(text);
+      toast('📋 Key copied to clipboard!', 'success');
+    }catch(e){
+      const ta = document.createElement('textarea'); ta.value = text;
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      toast('📋 Key copied to clipboard!', 'success');
+    }
+  });
+
+  /* =====================================================================
+     KINGUIN AUTO-DELIVERY — MOCK + PRODUCTION-READY
+     ---------------------------------------------------------------------
+     processKinguinOrder(items, customerEmail)
+       Simulates the full Kinguin handshake for an order (one or more products).
+       Each step is async so you can drop in the real backend proxy without
+       changing the caller. In production, POST the payload to YOUR backend
+       (which holds KINGUIN.apiKey server-side), then:
+         1. verify stock      → GET  {baseUrl}/v4/products/{sku}/availability
+         2. trigger purchase  → POST {baseUrl}/v4/orders { kinguinLine(...) }
+         3. capture key       → read `key` from the order/payment response
+         4. email the buyer   → transactional email (auto-delivery)
+       Returns [{ product, sku, key, orderId }].
+     ===================================================================== */
+  function fakeKey(){
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const seg = ()=>Array.from({length:5}, ()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+    return `${seg()}-${seg()}-${seg()}`;
+  }
+  const wait = ms => new Promise(r=>setTimeout(r, ms));
+  async function processKinguinOrder(items, customerEmail){
+    // (1) network handshake latency
+    await wait(900);
+
+    // (2) VERIFY AVAILABILITY — real code checks `available === true` per sku.
+    if(!items.length) throw new Error('No items in order.');
+
+    // (3) TRIGGER KEY PURCHASE per unit and CAPTURE the generated key response.
+    const keys = [];
+    for(const {product, qty} of items){
+      for(let i=0;i<qty;i++){
+        await wait(180);
+        const sku = product.sku;
+        const response = { orderId:'ORD-'+Date.now(), sku, key: fakeKey(), status:'ACTIVE' };
+        keys.push({ product, sku, key: response.key, orderId: response.orderId });
+      }
+    }
+
+    // (4) email-dispatch confirmation (mock — mirrored by the success modal).
+    console.info(`📧 Auto-delivery: ${keys.length} key(s) queued for ${customerEmail}`);
+    return keys;
+  }
+
+  $('#checkoutBtn').addEventListener('click', openCheckout);
+  $('#cartBtn').addEventListener('click', openCart);
+  $('#closeCart').addEventListener('click', closeCart);
+  $('#overlay').addEventListener('click', closeCart);
+
+  // Close any open modal / drawer with the Escape key
+  document.addEventListener('keydown', e=>{
+    if(e.key!=='Escape') return;
+    if($('#successModal').classList.contains('open')) closeSuccess();
+    else if($('#checkoutModal').classList.contains('open')) closeCheckout();
+    else if($('#cartDrawer').classList.contains('open')) closeCart();
+  });
+
+  // Add-to-cart (delegated on both grids)
+  ['#productGrid','#bestGrid'].forEach(sel=>{
+    $(sel).addEventListener('click', e=>{
+      const btn = e.target.closest('[data-add]');
+      if(btn){ addToCart(btn.dataset.add); }
+    });
+  });
+
+  /* ---------- 5. CATEGORY FILTER ---------- */
+  $('#filters').addEventListener('click', e=>{
+    const b = e.target.closest('.filt');
+    if(!b) return;
+    $$('.filt').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    state.cat = b.dataset.cat;
+    renderCatalog();
+  });
+  // nav category dropdown
+  $('#catMenu').addEventListener('click', e=>{
+    const b = e.target.closest('button[data-cat]');
+    if(!b) return;
+    state.cat = b.dataset.cat;
+    const filt = $(`.filt[data-cat="${state.cat}"]`);
+    if(filt){ $$('.filt').forEach(x=>x.classList.remove('active')); filt.classList.add('active'); }
+    renderCatalog();
+    $('#catDD').classList.remove('open');
+    document.getElementById('catalog').scrollIntoView({behavior:'smooth'});
+  });
+
+  /* ---------- 6. SEARCH ---------- */
+  function doSearch(v){
+    state.query = v.trim();
+    renderCatalog();
+  }
+  $('#searchInput').addEventListener('input', e=>{ doSearch(e.target.value); $('#searchMobile').value = e.target.value; });
+  const sm = $('#searchMobile');
+  if(sm) sm.addEventListener('input', e=>{ doSearch(e.target.value); });
+
+  /* ---------- 7. CURRENCY ---------- */
+  $('#curMenu').addEventListener('click', e=>{
+    const b = e.target.closest('button[data-cur]');
+    if(!b) return;
+    setCurrency(b.dataset.cur);
+    $('#curDD').classList.remove('open');
+  });
+  function setCurrency(c){
+    state.currency = c;
+    localStorage.setItem('morphina_cur', c);
+    $('#curSymbol').textContent = SYMBOL[c];
+    $$('#curMenu button').forEach(x=>x.classList.toggle('active', x.dataset.cur===c));
+    repriceAll();
+  }
+
+  /* ---------- 8. THEME ---------- */
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('morphina_theme', t);
+    // retint the WebGL scene lighting/materials so the 3D follows the theme
+    if(window.__setThreeTheme) window.__setThreeTheme(t);
+    // retint the Stripe Card Element so it matches dark/light mode
+    if(typeof gateway !== 'undefined' && gateway.card) gateway.card.update({ style: stripeStyle() });
+  }
+  $('#themeSwitch').addEventListener('click', ()=>{
+    state.theme = state.theme==='dark'?'light':'dark';
+    applyTheme(state.theme);
+  });
+
+  /* ---------- 9. DROPDOWNS / MOBILE MENU ---------- */
+  function closeDDs(){ $$('.dd').forEach(d=>d.classList.remove('open')); $('#mobileMenu').classList.remove('open'); }
+  function toggleDD(el){
+    const was = el.classList.contains('open');
+    closeDDs();
+    if(!was) el.classList.add('open');
+  }
+  $('#catBtn').addEventListener('click', e=>{ e.stopPropagation(); toggleDD($('#catDD')); });
+  $('#curBtn').addEventListener('click', e=>{ e.stopPropagation(); toggleDD($('#curDD')); });
+  document.addEventListener('click', e=>{ if(!e.target.closest('.dd')) closeDDs(); });
+  $('#burger').addEventListener('click', e=>{ e.stopPropagation(); $('#mobileMenu').classList.toggle('open'); });
+  $$('#mobileMenu [data-close]').forEach(el=>el.addEventListener('click', closeDDs));
+
+  /* ---------- 10. FAQ ---------- */
+  $$('.faq-q').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const item = btn.parentElement;
+      const was = item.classList.contains('open');
+      $$('.faq-item').forEach(x=>x.classList.remove('open'));
+      if(!was) item.classList.add('open');
+    });
+  });
+
+  /* ---------- 11. COUNTDOWN ---------- */
+  let end = new Date(); end.setHours(23,59,59,999);
+  const cd = $('#countdown');
+  function tick(){
+    let d = end - new Date();
+    if(d<=0){ end=new Date(); end.setDate(end.getDate()+1); end.setHours(23,59,59,999); d = end - new Date(); }
+    const h = String(Math.floor(d/3.6e6)).padStart(2,'0');
+    const m = String(Math.floor(d%3.6e6/6e4)).padStart(2,'0');
+    const s = String(Math.floor(d%6e4/1e3)).padStart(2,'0');
+    cd.textContent = `${h}:${m}:${s}`;
+  }
+  tick(); setInterval(tick, 1000);
+
+  /* ---------- 12. 3D TILT (vanilla JS, works offline) ---------- */
+  function bindTilt(container){
+    container.addEventListener('mousemove', e=>{
+      const cards = container.querySelectorAll('.p-card');
+      cards.forEach(card=>{
+        const r = card.getBoundingClientRect();
+        if(e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom){
+          const cx = r.left + r.width/2, cy = r.top + r.height/2;
+          const dx = (e.clientX - cx)/r.width, dy = (e.clientY - cy)/r.height;
+          card.style.setProperty('--ry', (dx*10).toFixed(2)+'deg');
+          card.style.setProperty('--rx', (-dy*10).toFixed(2)+'deg');
+          card.style.setProperty('--mx', (dx*50+50)+'%');
+          card.style.setProperty('--my', (dy*50+50)+'%');
+        }
+      });
+    });
+    container.addEventListener('mouseleave', ()=>{
+      container.querySelectorAll('.p-card').forEach(card=>{
+        card.style.setProperty('--rx','0deg');
+        card.style.setProperty('--ry','0deg');
+      });
+    });
+  }
+  bindTilt($('#productGrid'));
+  bindTilt($('#bestGrid'));
+
+  /* ---------- 13. REVEAL ON SCROLL ---------- */
+  const io = new IntersectionObserver(es=>{
+    es.forEach(en=>{ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+  }, {threshold:.1});
+  $$('.reveal').forEach(el=>io.observe(el));
+
+  /* =====================================================================
+     14. THREE.JS HERO — theme-aware, high-fidelity 3D scene
+     ---------------------------------------------------------------------
+     • A soft, undulating "depth mesh" of glowing blue points, a sparse drifting
+       particle field, and faint orbit rings — pushed far back so they read as a
+       subtle ambient atmosphere BEHIND the hero text & cards, never a foreground
+       block. The canvas is `pointer-events:none` and layered beneath the UI, so
+       all clicks, scrolls and interactions pass straight through.
+     • `setThreeTheme()` lerps the scene lighting/materials toward the current
+       theme palette (deep electric blue in dark, sky blue in light) so the
+       3D seamlessly follows the Dark/Light toggle.
+     • Degrades gracefully: if the CDN can't load, the hero falls back to the
+       pure-CSS floating cards, so the preview never breaks.
+     ===================================================================== */
+  // map the page's CSS-theme palette into hex the renderer understands
+  const THEME3D = {
+    dark:  { bg:0x050a18, deep:0x2b6bff, mid:0x4f8cff, ice:0x38bdf8, ambient:0x2b3a66, ambientI:0.55, pInt:1.5 },
+    light: { bg:0xeef4ff, deep:0x0a84ff, mid:0x3b82f6, ice:0x38bdf8, ambient:0xffffff, ambientI:0.9,  pInt:0.9 }
+  };
+  let threeTheme = 'dark', threeRefs = null;
+
+  function initThree(){
+    const canvas = $('#hero3d');
+    if(!canvas || typeof THREE === 'undefined'){ canvas && (canvas.style.display='none'); return; } // graceful fallback
+    try{
+      threeTheme = state.theme;               // start the scene on the saved theme
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, canvas.clientWidth/canvas.clientHeight, .1, 1000);
+      camera.position.set(0, 0, 26);
+      const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true, powerPreference:'high-performance'});
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+
+      const pal = THEME3D[threeTheme];
+
+      // --- soft, dim lights (referenced so setThreeTheme can retint them) ---
+      const amb = new THREE.AmbientLight(pal.ambient, pal.ambientI);
+      const key = new THREE.PointLight(pal.mid, pal.pInt, 60);  key.position.set(6,6,10);
+      const fill = new THREE.PointLight(pal.ice, 0.4, 60);       fill.position.set(-8,-4,-4);
+      scene.add(amb, key, fill);
+
+      // --- ambient "depth mesh": a soft grid of glowing points that undulates in Z.
+      //     Pushed far back so it reads as atmosphere behind the UI, not a block.
+      const COLS=72, ROWS=46, COUNT=COLS*ROWS;
+      const meshXY = new Float32Array(COUNT*2);     // base x,y per point
+      const meshPos = new Float32Array(COUNT*3);
+      const meshPhase = new Float32Array(COUNT);
+      let mi=0;
+      for(let r=0;r<ROWS;r++){
+        for(let c=0;c<COLS;c++){
+          const x=(c/(COLS-1)-.5)*48;
+          const y=(r/(ROWS-1)-.5)*32;
+          meshXY[mi*2]=x; meshXY[mi*2+1]=y;
+          meshPos[mi*3]=x; meshPos[mi*3+1]=y; meshPos[mi*3+2]=0;
+          meshPhase[mi]=x*.35+y*.22; mi++;
+        }
+      }
+      const meshGeo = new THREE.BufferGeometry();
+      meshGeo.setAttribute('position', new THREE.BufferAttribute(meshPos,3));
+      const meshMat = new THREE.PointsMaterial({ color:pal.mid, size:.16, transparent:true, opacity:.42, sizeAttenuation:true, depthWrite:false, blending:THREE.AdditiveBlending });
+      const mesh = new THREE.Points(meshGeo, meshMat);
+      mesh.position.z=-17; scene.add(mesh);
+
+      // --- sparse floating particles ---
+      const pGeo = new THREE.BufferGeometry();
+      const N = 520, pos = new Float32Array(N*3);
+      for(let i=0;i<N;i++){ pos[i*3]=(Math.random()-.5)*54; pos[i*3+1]=(Math.random()-.5)*40; pos[i*3+2]=(Math.random()-.5)*30-6; }
+      pGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+      const pMat = new THREE.PointsMaterial({ color:0xffffff, size:.11, transparent:true, opacity:.35, sizeAttenuation:true, depthWrite:false });
+      const points = new THREE.Points(pGeo, pMat);
+      scene.add(points);
+
+      // --- soft glowing orbit rings (faint, pushed into the background) ---
+      const ringMat = new THREE.MeshBasicMaterial({ color:pal.ice, wireframe:true, transparent:true, opacity:.2 });
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(15,.05,8,120), ringMat);
+      ring.rotation.x=Math.PI/2.3; ring.position.z=-14; scene.add(ring);
+      const ring2Mat = new THREE.MeshBasicMaterial({ color:pal.deep, wireframe:true, transparent:true, opacity:.14 });
+      const ring2 = new THREE.Mesh(new THREE.TorusGeometry(20,.04,8,140), ring2Mat);
+      ring2.rotation.x=Math.PI/1.8; ring2.rotation.y=.6; ring2.position.z=-18; scene.add(ring2);
+
+      // --- fog for depth ---
+      scene.fog = new THREE.FogExp2(pal.bg, 0.016);
+
+      threeRefs = { scene, renderer, camera, amb, key, fill, meshMat, meshGeo, meshXY, meshPhase, mesh, pMat, points, ringMat, ring2Mat, ring, ring2 };
+
+      // --- cursor parallax ---
+      let mouseX=0, mouseY=0;
+      window.addEventListener('pointermove', e=>{
+        mouseX = (e.clientX/window.innerWidth - .5);
+        mouseY = (e.clientY/window.innerHeight - .5);
+      }, {passive:true});
+
+      const clock = new THREE.Clock();
+      const meshArray = meshGeo.attributes.position.array;
+      (function animate(){
+        requestAnimationFrame(animate);
+        const t = clock.getElapsedTime();
+        scene.fog.color.setHex(THEME3D[threeTheme].bg);
+        // gentle glowing wave across the depth mesh
+        for(let i=0;i<COUNT;i++){
+          const bx=meshXY[i*2], by=meshXY[i*2+1];
+          meshArray[i*3+2] = Math.sin(bx*.25 + t*1.1 + meshPhase[i])*1.5 + Math.cos(by*.2 + t*.7)*1.5;
+        }
+        meshGeo.attributes.position.needsUpdate = true;
+        points.rotation.y = t*.02;
+        ring.rotation.z += .0008;
+        ring2.rotation.z -= .0006;
+        // very subtle cursor parallax depth shift
+        camera.position.x += (mouseX*2.5 - camera.position.x)*.04;
+        camera.position.y += (-mouseY*2.5 - camera.position.y)*.04;
+        camera.lookAt(0,0,0);
+        renderer.render(scene, camera);
+      })();
+
+      function onResize(){
+        camera.aspect = canvas.clientWidth/canvas.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+      }
+      window.addEventListener('resize', onResize);
+
+      // smooth-morph scene to the active palette (called on theme switch)
+      window.__setThreeTheme = function(t){
+        threeTheme = t;
+        if(!threeRefs) return;
+        const p = THEME3D[t];
+        // lerp each color toward target
+        const lerpTo = (obj, hex, f)=>{ const c=new THREE.Color(hex); obj.r+= (c.r-obj.r)*f; obj.g+=(c.g-obj.g)*f; obj.b+=(c.b-obj.b)*f; };
+        lerpTo(amb.color, p.ambient, .4); amb.intensity += (p.ambientI-amb.intensity)*.4;
+        lerpTo(key.color, p.mid, .4);      key.intensity += (p.pInt-key.intensity)*.4;
+        lerpTo(fill.color, p.ice, .4);
+        threeRefs.meshMat.color.lerp(new THREE.Color(p.mid), .4);
+        threeRefs.ringMat.color.lerp(new THREE.Color(p.ice), .4);
+        threeRefs.ring2Mat.color.lerp(new THREE.Color(p.deep), .4);
+        threeRefs.meshMat.opacity = t==='light'? .26 : .42;
+        threeRefs.pMat.opacity = t==='light'? .22 : .35;
+        threeRefs.pMat.size = t==='light'? .09 : .11;
+        renderer.toneMappingExposure = t==='light'? .9 : 1.05;
+      };
+      window.__setThreeTheme(threeTheme);
+    }catch(err){ console.warn('Three.js hero disabled:', err); }
+  }
+
+  /* ---------- 14b. STAGE POINTER PARALLAX (pure-3D CSS cards) ---------- */
+  function bindStageTilt(){
+    const stage = document.querySelector('.stage');
+    if(!stage) return;
+    stage.addEventListener('mousemove', e=>{
+      const r = stage.getBoundingClientRect();
+      const dx = (e.clientX-r.left)/r.width - .5, dy = (e.clientY-r.top)/r.height - .5;
+      // custom props inherit to children: translate the whole visual + add rotation
+      stage.style.setProperty('--px', (dx*-12).toFixed(1)+'px');
+      stage.style.setProperty('--py', (dy*-12).toFixed(1)+'px');
+      stage.querySelectorAll('.card3d').forEach(c=>{
+        // keep the CSS-declared base rotation and layer the parallax on top
+        const base = getComputedStyle(c).getPropertyValue('--tt').trim() || 'rotateY(0deg) rotateX(0deg)';
+        c.style.setProperty('--tt', `${(dx*16).toFixed(2)}deg ${(dy*-16).toFixed(2)}deg ${base}`);
+      });
+    });
+    stage.addEventListener('mouseleave', ()=>{
+      stage.style.setProperty('--px','0px'); stage.style.setProperty('--py','0px');
+      stage.querySelectorAll('.card3d').forEach(c=>c.style.removeProperty('--tt'));
+    });
+  }
+
+  /* ---------- 15. INIT ---------- */
+  applyTheme(state.theme);
+  setCurrency(state.currency);
+  renderCatalog();
+  renderBest();
+  bindStageTilt();
+  $('#year').textContent = new Date().getFullYear();
+  initThree();
+})();
+</script>
+</body>
+</html>
