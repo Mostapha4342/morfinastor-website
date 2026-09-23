@@ -1,0 +1,15 @@
+{
+  "name": "morphina-store",
+  "version": "1.0.0",
+  "description": "Morphina Store — a high-converting, production-ready digital license storefront with an interactive 3D background, multi-currency pricing, cart & checkout, and Kinguin auto-delivery prep.",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "keywords": ["digital-licenses", "ecommerce", "threejs", "cart", "checkout", "kinguin", "stripe", "paypal"],
+  "license": "MIT"
+}

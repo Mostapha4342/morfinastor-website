@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Morphina Store — Genuine Digital Licenses, Delivered Instantly</title>
+<meta name="description" content="Morphina Store — buy genuine Windows, Office, Antivirus, AI and Graphics licenses. Instant email delivery, 256-bit SSL, multi-currency checkout, and 24/7 support." />
+
+<!-- =============================================================================
+  MORPHINA STORE — front-end entry point
+  -------------------------------------------------------------------------------
+  Files:
+    styles.css  → design system (CSS variables, themes, layout, components)
+    app.js      → all app logic (state, cart, checkout, PayPal/Stripe, Kinguin)
+    assets/     → product cover images
+  The Three.js 3D background loads from a CDN below; the site degrades
+  gracefully (pure-CSS 3D) when offline. Set your payment keys in app.js.
+============================================================================== -->
+
+  <link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+
+<!-- ============ FULLSCREEN 3D BACKGROUND (fixed, global) ============
+     This canvas is a direct child of <body>, NOT inside any hero/section div.
+     It covers the entire viewport, sits at z-index:-1 (behind ALL page content
+     — header, grids, footer), and uses pointer-events:none so every UI element,
+     card and button stays fully clickable/scrollable over it. Scrolling leaves
+     it fixed in the background across the whole site.
+     The WebGL scene renders the theme-aware ambient mesh/particles behind it. -->
+<canvas id="hero3d" aria-hidden="true"></canvas>
+
+<!-- ============ TOP BAR ============ -->
+<div class="topbar">
+  <div class="container">
+    <span>⚡ Flash sale</span><span class="dot">•</span>
+    <b>Up to 97% OFF</b><span class="dot">•</span>
+    <span>Multi-currency checkout · Instant delivery</span><span class="dot">•</span>
+    <span class="hidden sm-inline">Ends in <b id="countdown">00:00:00</b></span>
+  </div>
+</div>
+
+<!-- ============ NAV ============ -->
+<header class="nav">
+  <div class="container">
+    <a href="#" class="brand" aria-label="Morphina Store">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span>
+      <span>Morphina<small>STORE</small></span>
+    </a>
+
+    <form class="nav-search" onsubmit="return false;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" type="search" placeholder="Search licenses…" autocomplete="off" />
+    </form>
+
+    <nav class="nav-links">
+      <a href="#catalog">Catalog</a>
+      <a href="#best">Best Sellers</a>
+      <a href="#payments">Payments</a>
+      <a href="#reviews">Reviews</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <div class="nav-tools">
+      <!-- Category dropdown -->
+      <div class="dd" id="catDD">
+        <button class="dd-btn" id="catBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          Categories
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="dd-menu" id="catMenu">
+          <button data-cat="all">🌟 All Products</button>
+          <button data-cat="os">🖥️ Operating Systems</button>
+          <button data-cat="office">📊 Office Suites</button>
+          <button data-cat="antivirus">🛡️ Antivirus</button>
+          <button data-cat="ai">🤖 AI Licenses</button>
+          <button data-cat="graphics">🎨 Graphics</button>
+        </div>
+      </div>
+
+      <!-- Currency dropdown -->
+      <div class="dd" id="curDD">
+        <button class="dd-btn" id="curBtn">
+          <span id="curSymbol">$</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="dd-menu" id="curMenu">
+          <button data-cur="USD" class="cur">🇺🇸 USD <span class="cur-code">$</span></button>
+          <button data-cur="EUR" class="cur">🇪🇺 EUR <span class="cur-code">€</span></button>
+          <button data-cur="GBP" class="cur">🇬🇧 GBP <span class="cur-code">£</span></button>
+          <button data-cur="MAD" class="cur">🇲🇦 MAD <span class="cur-code">MAD</span></button>
+        </div>
+      </div>
+
+      <!-- Theme switch -->
+      <button class="theme-switch" id="themeSwitch" aria-label="Toggle theme">
+        <span class="knob"><span class="moon">🌙</span><span class="sun">☀️</span></span>
+      </button>
+
+      <!-- Cart -->
+      <button class="cart-btn" id="cartBtn" aria-label="Cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1.4"/><circle cx="19" cy="21" r="1.4"/><path d="M3 3h2l2.5 13h11l2-9H7"/></svg>
+        <span class="count" id="cartCount">0</span>
+      </button>
+
+      <!-- Mobile burger -->
+      <button class="burger" id="burger" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Mobile menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <div class="panel">
+    <button style="position:absolute;top:1.1rem;left:1.1rem;width:36px;height:36px;border-radius:10px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <nav>
+      <a href="#catalog" data-close>Catalog</a>
+      <a href="#best" data-close>Best Sellers</a>
+      <a href="#payments" data-close>Payments</a>
+      <a href="#reviews" data-close>Reviews</a>
+      <a href="#faq" data-close>FAQ</a>
+    </nav>
+    <form class="nav-search" style="margin-top:1.6rem;max-width:none" onsubmit="return false;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchMobile" type="search" placeholder="Search licenses…" />
+    </form>
+  </div>
+</div>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="grid-bg"></div>
+  <div class="container">
+    <div>
+      <span class="eyebrow">◆ Official digital license store</span>
+      <h1 class="sc-title">Genuine licenses.<br/><span class="grad-text">Instant delivery.</span><br/>Zero risk.</h1>
+      <p class="lead">Unlock Windows, Office, Antivirus, AI and Graphics software with 100% authentic keys — delivered to your inbox in seconds, priced in the currency you trust.</p>
+      <ul class="hero-points">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 6"/></svg> Instant email delivery of your license key</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 6"/></svg> 256-bit SSL encrypted, secure checkout</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 6"/></svg> 100% genuine guarantee + 24/7 human support</li>
+      </ul>
+      <div class="hero-cta">
+        <a href="#catalog" class="btn btn-primary btn-lg" style="padding:1.05rem 1.8rem">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>
+          Browse licenses
+        </a>
+        <a href="#best" class="btn btn-ghost btn-lg" style="padding:1.05rem 1.8rem">Best sellers</a>
+      </div>
+      <div class="hero-meta">
+        <div class="avatars">
+          <span style="background:#f472b6">LV</span>
+          <span style="background:#60a5fa">HN</span>
+          <span style="background:#34d399">ZK</span>
+          <span style="background:#fbbf24">TB</span>
+        </div>
+        <div>
+          <span class="stars">★★★★★</span>
+          <small><b>4.9/5</b> from 2,300+ verified buyers</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D visual -->
+    <div class="stage">
+      <div class="glowball"></div>
+      <div class="orbit"></div>
+      <div class="orbit2"></div>
+      <div class="card3d c1"><div class="chip"></div><div class="num">4912 •••• •••• 8841</div><div class="row"><span>LICENSE KEY</span><span class="brand-tag"><span class="dotp"></span>MORPHINA</span></div></div>
+      <div class="card3d c2"><div class="chip"></div><div class="num">WIN-11 •• PRO •••</div><div class="row"><span>ACTIVATED</span><span class="brand-tag"><span class="dotp"></span>MORPHINA</span></div></div>
+      <div class="card3d c3"><div class="chip"></div><div class="num">XXXXX-XXXXX-XXXXX</div><div class="row"><span>INSTANT DELIVERY</span><span class="brand-tag"><span class="dotp"></span>MORPHINA</span></div></div>
+      <div class="card3d c4"><div class="chip"></div><div class="num">SECURE · SSL</div><div class="row"><span>24/7 SUPPORT</span><span class="brand-tag"><span class="dotp"></span>MORPHINA</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRUST BADGES ============ -->
+<section class="trust">
+  <div class="container">
+    <div class="trust-grid">
+      <div class="trust-item reveal">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg></span>
+        <div><h4>Instant email delivery</h4><p>Key sent to your inbox within seconds of purchase.</p></div>
+      </div>
+      <div class="trust-item reveal">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+        <div><h4>256-bit SSL encryption</h4><p>Your payment and data are always fully protected.</p></div>
+      </div>
+      <div class="trust-item reveal">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <div><h4>100% genuine guarantee</h4><p>Official, license-approved, original product keys.</p></div>
+      </div>
+      <div class="trust-item reveal">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+        <div><h4>24/7 human support</h4><p>Real experts, pre- and post-sale, whenever you need.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CATALOG ============ -->
+<section class="section" id="catalog">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Live catalog</span>
+      <h2 class="sc-title">Shop the full license store</h2>
+      <p>Every product ships instantly, is 100% genuine, and is re-priced live across all currencies as you switch.</p>
+    </div>
+    <div class="filters reveal" id="filters">
+      <button class="filt active" data-cat="all">🌟 All</button>
+      <button class="filt" data-cat="os">🖥️ Operating Systems</button>
+      <button class="filt" data-cat="office">📊 Office</button>
+      <button class="filt" data-cat="antivirus">🛡️ Antivirus</button>
+      <button class="filt" data-cat="ai">🤖 AI Tools</button>
+      <button class="filt" data-cat="graphics">🎨 Graphics</button>
+    </div>
+    <div class="grid-products" id="productGrid"></div>
+    <p class="text-center" id="noResults" style="color:var(--muted);padding:2rem;display:none">No products match your search.</p>
+  </div>
+</section>
+
+<!-- ============ BEST SELLERS ============ -->
+<section class="section" id="best" style="background:color-mix(in srgb,var(--bg-2) 78%,transparent);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">🔥 Most popular</span>
+      <h2 class="sc-title">Best-selling licenses</h2>
+      <p>Trusted by thousands of customers worldwide.</p>
+    </div>
+    <div class="h-scroll" id="bestGrid"></div>
+  </div>
+</section>
+
+<!-- ============ PAYMENT GATEWAY ============ -->
+<section class="section pay" id="payments">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Global payments</span>
+      <h2 class="sc-title">Pay your way, in any currency</h2>
+      <p>Industry-standard payment gateways — every single one secured with 256-bit SSL.</p>
+    </div>
+    <div class="pay-grid">
+      <div class="pay-item reveal"><span class="logo">💳</span><h4>Credit / Debit Card</h4><p>Visa, Mastercard, Amex — processed by Stripe.</p></div>
+      <div class="pay-item reveal"><span class="logo">🅿️</span><h4>PayPal</h4><p>Fast, buyer-protected checkout for supported regions.</p></div>
+      <div class="pay-item reveal"><span class="logo">₿</span><h4>Crypto</h4><p>BTC &amp; ETH accepted with instant confirmation.</p></div>
+      <div class="pay-item reveal"><span class="logo">🔒</span><h4>Secure by Stripe</h4><p>PCI-DSS compliant, tokenized, never stored.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REVIEWS ============ -->
+<section class="section" id="reviews">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Social proof</span>
+      <h2 class="sc-title">Loved by 2,300+ customers</h2>
+      <p>A 4.9/5 rating built on genuine, instant, worry-free activation.</p>
+    </div>
+    <div class="rev-grid">
+      <div class="rev-card reveal">
+        <div class="stars">★★★★★</div>
+        <p>"Ordered Windows 11 Pro and the key was in my inbox before I'd closed the tab. Activation took two minutes. Genuine and fast."</p>
+        <div class="who"><span class="avatar">LV</span><div><div class="name">Lina V.</div><div class="role">Verified buyer · 🇲🇦</div></div><span class="verified" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>Verified</span></div>
+      </div>
+      <div class="rev-card reveal">
+        <div class="stars">★★★★★</div>
+        <p>"Switching to MAD pricing made it feel local. Support answered within minutes on a Mac install question. Would buy again."</p>
+        <div class="who"><span class="avatar">HN</span><div><div class="name">Hamza N.</div><div class="role">Verified buyer · 🇲🇦</div></div><span class="verified" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>Verified</span></div>
+      </div>
+      <div class="rev-card reveal">
+        <div class="stars">★★★★★</div>
+        <p>"Half the retail price for Office 2024, delivered instantly, fully licensed. Saved a fortune on a real, working product."</p>
+        <div class="who"><span class="avatar">ZK</span><div><div class="name">Zayd K.</div><div class="role">Verified buyer · 🇬🇧</div></div><span class="verified" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg>Verified</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="section" id="faq" style="background:color-mix(in srgb,var(--bg-2) 82%,transparent);border-top:1px solid var(--border)">
+  <div class="container">
+    <div class="sec-head reveal">
+      <span class="eyebrow">Before you buy</span>
+      <h2 class="sc-title">Frequently asked questions</h2>
+      <p>Everything you need to know.</p>
+    </div>
+    <div class="faq-wrap reveal">
+      <div class="faq-item"><button class="faq-q">How fast is delivery?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button><div class="faq-a"><p>Delivery is essentially instant. Your license key and a simple activation guide are emailed to you seconds after payment is confirmed.</p></div></div>
+      <div class="faq-item"><button class="faq-q">Are the licenses genuinely official?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button><div class="faq-a"><p>Yes. Every key is sourced from official distributors, is licensed and activation-verified, and carries our 100% genuine guarantee.</p></div></div>
+      <div class="faq-item"><button class="faq-q">Will it keep working after updates?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button><div class="faq-a"><p>Absolutely. Your key binds to your own account, so it continues working and receiving updates for the lifetime of the product — no subscription.</p></div></div>
+      <div class="faq-item"><button class="faq-q">What if I can't activate it?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button><div class="faq-a"><p>Our 24/7 support team will walk you through activation step by step. If we can't resolve it, you get a full refund within 14 days.</p></div></div>
+      <div class="faq-item"><button class="faq-q">Which currencies can I pay in?<span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span></button><div class="faq-a"><p>All prices update live across USD, EUR, GBP and MAD. Pick your currency in the header, and everything — catalog, cart and totals — converts instantly.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta-band">
+  <div class="container reveal">
+    <h2 class="sc-title">Grab your genuine license today</h2>
+    <p>Instant delivery, lifetime activation, secure checkout and real support — at up to 97% off.</p>
+    <a href="#catalog" class="btn btn-lg" style="padding:1.05rem 2.1rem">Shop the store now</a>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="container">
+    <div class="foot-grid">
+      <div>
+        <a href="#" class="brand"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/><path d="M9 12l2 2 4-4"/></svg></span><span>Morphina<small>STORE</small></span></a>
+        <p style="color:var(--muted);font-size:.9rem;max-width:24rem;margin-top:.8rem">Genuine digital software licenses delivered instantly and backed by real support and a money-back guarantee.</p>
+        <div class="social">
+          <a href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7 8 8.2 12H17l-5.2-7.6L6 22H3l7.4-8.6L2.5 2H8l4.6 6.7z"/></svg></a>
+          <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></a>
+          <a href="#" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 12s0-3.9-.5-5.6a2.9 2.9 0 0 0-2-2C18.8 4 12 4 12 4s-6.8 0-8.5.4a2.9 2.9 0 0 0-2 2C1 8.1 1 12 1 12s0 3.9.5 5.6a2.9 2.9 0 0 0 2 2c1.7.4 8.5.4 8.5.4s6.8 0 8.5-.4a2.9 2.9 0 0 0 2-2c.5-1.7.5-5.6.5-5.6zM9.8 15.5v-7l6 3.5z"/></svg></a>
+          <a href="#" aria-label="Discord"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 5.5A16.5 16.5 0 0 0 15.9 4l-.2.5a12.3 12.3 0 0 1 3.7 1.9 12 12 0 0 0-10.8 0A12 12 0 0 1 12.3 4.5L12.1 4A16.5 16.5 0 0 0 8 5.5C5.3 9.5 4.6 13.3 5 17a16.6 16.6 0 0 0 5 5l.8-1.4c-1.3-.5-2.3-1.2-3.4-2.1.3-.2.6-.4.9-.6a11 11 0 0 0 10.4 0l.9.6c-1.1.9-2.1 1.6-3.4 2.1L17 22a16.6 16.6 0 0 0 5-5c.5-4.3-.7-8-2-11.5zM9.7 15.2c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2zm4.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2z"/></svg></a>
+        </div>
+      </div>
+
+      <div class="foot-col"><h4>Shop</h4><ul><li><a href="#catalog">All licenses</a></li><li><a href="#best">Best sellers</a></li><li><a href="#catalog">Operating systems</a></li><li><a href="#catalog">Office suites</a></li><li><a href="#catalog">AI tools</a></li></ul></div>
+      <div class="foot-col"><h4>Support</h4><ul><li><a href="#">Help center</a></li><li><a href="#">Activation guide</a></li><li><a href="#">Refund policy</a></li><li><a href="#">Terms of service</a></li><li><a href="#">Privacy policy</a></li></ul></div>
+      <div class="foot-col news"><h4>Stay in the loop</h4><p>Get exclusive deals and updates straight to your inbox.</p>
+        <form onsubmit="event.preventDefault(); toast('✅ Thanks! You are subscribed.'); this.reset();">
+          <input type="email" placeholder="Your email" required aria-label="Email" />
+          <button type="submit">Join</button>
+        </form>
+        <div class="pay-badges"><span class="pay-badge">VISA</span><span class="pay-badge">Mastercard</span><span class="pay-badge">PayPal</span><span class="pay-badge">BTC</span><span class="pay-badge">ETH</span><span class="pay-badge">Stripe</span></div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© <span id="year"></span> Morphina Store. All rights reserved.</span>
+      <span><a href="#">Terms</a><a href="#">Privacy</a><a href="#">Cookies</a></span>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ CART OVERLAY ============ -->
+<div class="overlay" id="overlay"></div>
+<aside class="cart-drawer" id="cartDrawer" aria-label="Shopping cart">
+  <div class="cart-head">
+    <h3>Your cart <span id="cartQty" style="color:var(--primary)"></span></h3>
+    <button id="closeCart" aria-label="Close cart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="cart-foot">
+    <div class="cart-totals" id="cartTotals" hidden></div>
+    <div class="cart-total"><span class="lbl">Total</span><span class="amt" id="cartTotal">$0</span></div>
+    <button class="btn btn-primary w-full" id="checkoutBtn">Checkout securely</button>
+    <button class="clear-cart" id="clearCartBtn" type="button">🗑️ Empty cart</button>
+    <div class="secure-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> 256-bit SSL encrypted checkout</div>
+  </div>
+</aside>
+
+<!-- ============ MULTI-STEP CHECKOUT MODAL ============ -->
+<div class="modal-backdrop" id="checkoutModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Checkout">
+    <div class="modal-head">
+      <h3>Secure checkout</h3>
+      <button id="coClose" aria-label="Close checkout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <!-- Step indicator -->
+    <div class="steps-dots" id="coDots">
+      <div class="step-dot active" data-step="1"><span class="dot">1</span><span class="lbl">Details</span></div>
+      <span class="dash" data-dash="1"></span>
+      <div class="step-dot" data-step="2"><span class="dot">2</span><span class="lbl">Payment</span></div>
+      <span class="dash" data-dash="2"></span>
+      <div class="step-dot" data-step="3"><span class="dot">3</span><span class="lbl">Review</span></div>
+    </div>
+
+    <div class="modal-body">
+      <!-- STEP 1: customer details -->
+      <div class="co-step active" data-step-body="1">
+        <div class="field">
+          <label for="coEmail">Email address <span style="color:var(--primary)">*</span></label>
+          <input id="coEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+          <div class="err">Please enter a valid email address.</div>
+          <div class="field-hint">Your license key will be delivered to this email instantly.</div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="coFirst">First name <span style="color:var(--primary)">*</span></label>
+            <input id="coFirst" type="text" placeholder="Jane" autocomplete="given-name" />
+            <div class="err">First name is required.</div>
+          </div>
+          <div class="field">
+            <label for="coLast">Last name <span style="color:var(--primary)">*</span></label>
+            <input id="coLast" type="text" placeholder="Doe" autocomplete="family-name" />
+            <div class="err">Last name is required.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: payment gateway -->
+      <div class="co-step" data-step-body="2">
+        <div class="pm-list" id="pmList">
+          <div class="pm-opt selected" data-pm="stripe">
+            <span class="radio"></span>
+            <span class="logo">💳</span>
+            <div>Credit / Debit Card
+              <small>Visa · Mastercard · Amex · Powered by Stripe</small>
+            </div>
+          </div>
+          <div class="pm-opt" data-pm="paypal">
+            <span class="radio"></span>
+            <span class="logo">🅿️</span>
+            <div>PayPal
+              <small>Pay with your PayPal balance or linked card</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- STRIPE: Card Element mounts here (dynamic iframe). -->
+        <div id="stripeArea">
+          <div id="cardElement" class="stripe-card"></div>
+          <div class="pm-frame" id="stripeSecure" style="margin-top:1rem">
+            <span>🔒</span>
+            <span><b>Card details are tokenized by Stripe</b></span>
+            <span>Your card number never touches our servers. Payment confirms on the review step.</span>
+          </div>
+          <div class="pm-frame" id="stripeMeta" style="margin-top:.6rem" hidden></div>
+        </div>
+
+        <!-- PAYPAL: Smart Buttons render on the review step (Step 3). -->
+        <div id="paypalArea" hidden>
+          <div class="pm-frame" style="margin-top:1rem">
+            <span>🅿️</span>
+            <span><b>PayPal Express Checkout</b></span>
+            <span>Review your order, then confirm payment with the PayPal Smart Button on the next step.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: order summary & review -->
+      <div class="co-step" data-step-body="3">
+        <div id="reviewItems" class="co-summary" style="margin-bottom:1rem"></div>
+        <div id="reviewTotals" class="co-summary"></div>
+        <!-- PayPal Smart Buttons container (only shown when PayPal is selected) -->
+        <div id="paypalButtonContainer" style="margin-top:1.2rem" hidden></div>
+        <div id="paypalFallback" class="pm-frame" style="margin-top:1rem" hidden></div>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="coBack" hidden>← Back</button>
+      <div style="display:flex;gap:.7rem;margin-left:auto">
+        <button class="btn btn-ghost" id="coSkip" hidden>Skip</button>
+        <button class="btn btn-primary" id="coNext">Continue</button>
+        <button class="btn btn-primary" id="placeOrder" hidden>
+          <span class="spinner" hidden></span>
+          <span class="btn-label" id="placeOrderLabel">Pay securely</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ORDER SUCCESS MODAL ============ -->
+<div class="modal-backdrop" id="successModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Order confirmed">
+    <div class="success-modal">
+      <div class="check-ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12l5 5L20 6"/></svg></div>
+      <h3>Order confirmed 🎉</h3>
+      <p id="successText">Your license key has been generated and is ready below.</p>
+      <div class="key-box">
+        <code id="successKey">XXXXX-XXXXX-XXXXX-XXXXX</code>
+        <button class="copy" id="copyKey">Copy Key</button>
+      </div>
+      <div class="email-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg> Key emailed to <b id="successEmail" style="color:var(--ink)"></b></div>
+      <button class="btn btn-primary w-full" id="successClose" style="max-width:260px;margin:0 auto">Continue shopping</button>
+      <div class="note">Keep this key safe. You'll also receive it by email by <span id="successRef" style="color:var(--ink);font-weight:700"></span>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Three.js CDN (loads when online; hero falls back to CSS 3D cards otherwise) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
